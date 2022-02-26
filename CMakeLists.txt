@@ -4,6 +4,7 @@ set(PROJECT_NAME margarine)
 
 set(PROJECT_SOURCES
     main.cpp
+    render/dda.cpp
 )
 
 # --- Here Be Boilerplate ---
