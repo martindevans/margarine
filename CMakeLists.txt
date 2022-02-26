@@ -1,24 +1,17 @@
 cmake_minimum_required(VERSION 3.12)
 
-# Set your project name here
-set(PROJECT_NAME my_project)
+set(PROJECT_NAME margarine)
 
-# Set your project sources here
 set(PROJECT_SOURCES
     main.cpp
 )
 
 # --- Here Be Boilerplate ---
 
-if(NOT PICO_SDK_PATH)
-    message(WARNING "PICO_SDK_PATH not specified. Forcing fetch from git!")
-    set(PICO_SDK_FETCH_FROM_GIT true)
-endif()
-
 # Pull in PICO SDK
 include(pico_sdk_import.cmake)
 
-# set up proejct
+# set up project
 project(${PROJECT_NAME} C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -38,8 +31,15 @@ picosystem_executable(
 # --- End Of Boilerplate ---
 
 # Set your build options here
-pixel_double(${PROJECT_NAME})          # 120x120 resolution game, pixel-doubled to 240x240
-disable_startup_logo(${PROJECT_NAME})  # Skip the PicoSystem splash
-#no_font(${PROJECT_NAME})              # Omit the default font
-#no_spritesheet(${PROJECT_NAME})       # Omit the default spritesheet
-#no_overclock(${PROJECT_NAME})         # Don't overclock
+
+# disable_startup_logo(${PROJECT_NAME})  
+# no_font(${PROJECT_NAME})         
+no_spritesheet(${PROJECT_NAME})
+
+target_compile_definitions(margarine PRIVATE
+    # Disable Pico alarm functions to save some binary space (https://raspberrypi.github.io/pico-sdk-doxygen/group__alarm.html)
+    PICO_TIME_DEFAULT_ALARM_POOL_DISABLED=0
+
+    # Disable checking if this is running on aimsulated Pico hardware to save some binary space
+    PICO_NO_FPGA_CHECK=1
+)
