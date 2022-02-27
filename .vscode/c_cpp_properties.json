@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/mnt/c/Users/Martin/Documents/cpp/picosystem/**",
-                "/mnt/c/Users/Martin/Documents/cpp/pico-sdk/**"
+                "/mnt/c/Users/Martin/Documents/cpp/pico-sdk/**",
+                "/mnt/c/Users/Martin/Documents/cpp/pico-sdk/src/rp2_common/hardware_interp/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

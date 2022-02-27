@@ -1,6 +1,10 @@
 #include "picosystem.hpp"
 
+#include "hardware/interp.h"
+
 #include "dda.h"
+
+using namespace picosystem;
 
 dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, uint8_t map_width)
 {
@@ -96,12 +100,119 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, 
     // Calculate height of line to draw on screen
     float lineHeight = dda_in->h / perpWallDist;
 
+    // Calculate where exactly the wall was hit
+    float wallX;
+    if (side == 0)
+        wallX = cam_in->posY + perpWallDist * rayDirY;
+    else
+        wallX = cam_in->posX + perpWallDist * rayDirX;
+    wallX -= int(wallX);
+
+    // // x coordinate on the texture
+    // int texX = int(wallX * double(texWidth));
+    // if ((side == 0 && rayDirX > 0) || (side == 1 && rayDirY < 0))
+    //     texX = texWidth - texX - 1;
+
     return dda_out_t
     {
         .wall_x = mapX,
         .wall_y = mapY,
         .wall_type = wall_type,
         .side = side,
-        .lineHeight = lineHeight
+        .lineHeight = lineHeight,
+        .texture_coord = wallX
     };
+}
+
+inline void fast_vline(uint16_t color, int16_t x, int16_t y, int16_t count)
+{
+    color_t *dst = _dt->p(x, y);
+    while (count-- > 0)
+    {
+        *dst = color;
+        dst += _dt->w;
+    }
+}
+
+inline void clamp_vline(int16_t *start, int16_t *end)
+{
+    if (*start < 0)
+        *start = 0;
+    if (*end > _dt->h)
+        *end = _dt->h;
+}
+
+inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8_t wall_type, int side, uint16_t *wallColor)
+{
+    // Determine the range of pixels to fill
+    int16_t drawStart = half_h - lineHeightInt / 2;
+    int16_t drawEnd = drawStart + lineHeightInt;
+    clamp_vline(&drawStart, &drawEnd);
+    int16_t lineHeight = drawEnd - drawStart;
+
+    // Choose wall color
+    color_t color = wallColor[wall_type];
+    if (side == 1)
+        color = color / 2;
+
+    // Draw the pixels of the stripe as a vertical line
+    fast_vline(color, x, drawStart, lineHeight);
+}
+
+inline void draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, uint16_t *wallColor)
+{
+    draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, dda_result->side, wallColor);
+}
+
+void render_walls_in_range(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, uint16_t *wallColor)
+{
+    uint16_t half_h = _dt->h / 2;
+    dda_in_t dda_in = {
+        .w = _dt->w,
+        .h = _dt->h
+    };
+
+    // Setup interpolators
+    interp_config cfg = interp_default_config();
+    interp_config_set_blend(&cfg, true);
+    interp_set_config(interp0, 0, &cfg);
+    cfg = interp_default_config();
+    interp_set_config(interp0, 1, &cfg);
+
+    const int bundle_width = 5;
+    const int bundle_lerp_step = (int)(255 / (float)(bundle_width - 1));
+    const float bundle_step = 1 / (float)(bundle_width - 1);
+
+    dda_out_t dda_result_l = dda(min_x, &dda_in, cam_state, worldMap, mapWidth);
+
+    for (int x = min_x; x < max_x - bundle_width + 1; x += bundle_width)
+    {
+        draw_dda(half_h, x, &dda_result_l, wallColor);
+        dda_out_t dda_result_r = dda(x + bundle_width, &dda_in, cam_state, worldMap, mapWidth);
+        
+        if (dda_result_l.wall_x == dda_result_r.wall_x && dda_result_l.wall_y == dda_result_r.wall_y && dda_result_l.wall_type == dda_result_r.wall_type && dda_result_l.side == dda_result_r.side)
+        {
+            // Render intermediate columns by interpolating the two end results
+            interp0->base[0] = dda_result_l.lineHeight;
+            interp0->base[1] = dda_result_r.lineHeight;
+            interp0->accum[1] = bundle_lerp_step;
+            for (int j = 1; j < bundle_width; j++)
+            {
+                interp0->accum[1] += bundle_lerp_step;
+                float lerped = dda_result_l.lineHeight + (dda_result_r.lineHeight - dda_result_l.lineHeight) * (j / (float)(bundle_width - 1)); //todo: use higher precision interpolator instead of floats
+                draw_wall(half_h, x + j, uint16_t(lerped), dda_result_l.wall_type, dda_result_l.side, wallColor);
+            }
+        }
+        else
+        {
+            // Two rays hit different walls, do all of the intermediate rays
+            for (int j = 1; j < bundle_width; j++)
+            {
+                dda_out_t dda_result_j = dda(x + j, &dda_in, cam_state, worldMap, mapWidth);
+                draw_dda(half_h, x + j, &dda_result_j, wallColor);
+            }
+        }
+
+        dda_result_l = dda_result_r;
+    }
 }

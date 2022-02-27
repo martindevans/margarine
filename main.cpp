@@ -7,9 +7,12 @@
 #include "hardware/interp.h"
 
 #include "render/dda.h"
+#include "render/texture_mapping.h"
 
 using namespace picosystem;
 
+#define mapWidth 24
+#define mapHeight 24
 uint8_t worldMap2[] =
 {
   4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,7,7,7,7,7,7,7,7,
@@ -50,6 +53,10 @@ color_t worldCol[] = {
     rgb(9, 0, 13),
 };
 
+#define texWidth 64
+#define texHeight 64
+uint16_t texture[texWidth * texHeight];
+
 camera_state_t cam_state = 
 {
     .posX = 4,
@@ -61,11 +68,13 @@ camera_state_t cam_state =
 };
 
 color_t bg = 0;
-int clear_dma_channel;
 
 void init()
 {
-    clear_dma_channel = dma_claim_unused_channel(true);
+    //generate some textures
+    for(int x = 0; x < texWidth; x++)
+    for(int y = 0; y < texHeight; y++)
+        texture[x + y * texWidth] = rgb(x % 15, y % 15, 0);
 }
 
 uint8_t sample_world_map(int x, int y)
@@ -124,45 +133,78 @@ void __time_critical_func(update)(uint32_t tick)
     }
 }
 
-inline void fast_vline(int16_t x, int16_t y, int16_t c)
+void __time_critical_func(draw_walls)()
 {
-    color_t *dst = _dt->p(x, y);
-    while(c-- > 0)
+    render_walls_in_range(0, 120, &cam_state, worldMap2, mapWidth, &worldCol[0]);
+    render_walls_in_range(120, 240, &cam_state, worldMap2, mapWidth, &worldCol[0]);
+}
+
+void __time_critical_func(draw_floor)()
+{
+    uint16_t w = SCREEN->w;
+    uint16_t h = SCREEN->h;
+    uint16_t half_h = h / 2;
+
+    //FLOOR CASTING
+    for (int y = 0; y < half_h; y++)
     {
-        *dst = _pen;
-        dst += _dt->w;
+        // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
+        float rayDirX0 = cam_state.dirX - cam_state.planeX;
+        float rayDirY0 = cam_state.dirY - cam_state.planeY;
+        float rayDirX1 = cam_state.dirX + cam_state.planeX;
+        float rayDirY1 = cam_state.dirY + cam_state.planeY;
+
+        // Current y position compared to the center of the screen (the horizon)
+        int p = y - half_h;
+
+        // Horizontal distance from the camera to the floor for the current row.
+        // 0.5 is the z position exactly in the middle between floor and ceiling.
+        float rowDistance = half_h / p;
+
+        // calculate the real world step vector we have to add for each x (parallel to camera plane)
+        // adding step by step avoids multiplications with a weight in the inner loop
+        float floorStepX = rowDistance * (rayDirX1 - rayDirX0) / w;
+        float floorStepY = rowDistance * (rayDirY1 - rayDirY0) / w;
+
+        // real world coordinates of the leftmost column. This will be updated as we step to the right.
+        float floorX = cam_state.posX + rowDistance * rayDirX0;
+        float floorY = cam_state.posY + rowDistance * rayDirY0;
+
+        // for(int x = 0; x < w; ++x)
+        // {
+        //     // the cell coord is simply got from the integer parts of floorX and floorY
+        //     int cellX = int(floorX);
+        //     int cellY = int(floorY);
+
+        //     // get the texture coordinate from the fractional part
+        //     int tx = (int)(texWidth * (floorX - cellX)) & (texWidth - 1);
+        //     int ty = (int)(texHeight * (floorY - cellY)) & (texHeight - 1);
+
+        //     floorX += floorStepX;
+        //     floorY += floorStepY;
+
+        //     // choose texture and draw the pixel
+        //     uint16_t color;
+
+        //     // floor
+        //     color = texture[texWidth * ty + tx];
+        //     *(_dt->p(x, y)) = color;
+
+        //     //ceiling (symmetrical, at screenHeight - y - 1 instead of y)
+        //     color = texture[texWidth * ty + tx];
+        //     *(_dt->p(x, h - y - 1)) = color;
+        // }
+
+        texture_mapping_setup(texture, 6, 6, 16);
+        texture_mapped_span_begin(65536 * floorX, 65536 * floorY, 65536 * floorStepX, 65536 * floorStepY);
+        uint16_t *dst = _dt->p(0, y);
+        for (int x = 0; x < w; x++)
+        {
+            *dst = texture_mapped_span_next();
+            dst++;
+        }
+
     }
-}
-
-inline void clamp_vline(int16_t *start, int16_t *end)
-{
-    if (*start < 0)
-        *start = 0;
-    if (*end > SCREEN->h)
-        *end = SCREEN->h;
-}
-
-inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8_t wall_type, int side)
-{
-    // Determine the range of pixels to fill
-    int16_t drawStart = half_h - lineHeightInt / 2;
-    int16_t drawEnd = drawStart + lineHeightInt;
-    clamp_vline(&drawStart, &drawEnd);
-    int16_t lineHeight = drawEnd - drawStart;
-
-    // Choose wall color
-    color_t color = worldCol[wall_type];
-    if (side == 1)
-        color = color / 2;
-
-    // Draw the pixels of the stripe as a vertical line
-    pen(color);
-    fast_vline(x, drawStart, lineHeight);
-}
-
-inline void draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result)
-{
-    draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, dda_result->side);
 }
 
 void __time_critical_func(draw)(uint32_t tick)
@@ -171,54 +213,11 @@ void __time_critical_func(draw)(uint32_t tick)
     pen(rgb(0, 0, 0));
     clear();
 
-    uint16_t half_h = SCREEN->h / 2;
-    dda_in_t dda_in = {
-        .w = SCREEN->w,
-        .h = SCREEN->h
-    };
-
-    // Setup interpolators
-    interp_config cfg = interp_default_config();
-    interp_config_set_blend(&cfg, true);
-    interp_set_config(interp0, 0, &cfg);
-    cfg = interp_default_config();
-    interp_set_config(interp0, 1, &cfg);
-
-    const int bundle_width = 5;
-    const int bundle_lerp_step = (int)(255 / (float)(bundle_width - 1));
-    const float bundle_step = 1 / (float)(bundle_width - 1);
-    for (int x = 0; x < SCREEN->w; x += bundle_width)
-    {
-        // DDA the left and right side of this range of 5 pixels
-        dda_out_t dda_result_l = dda(x + 0, &dda_in, &cam_state, &worldMap2[0], 24);
-        draw_dda(half_h, x, &dda_result_l);
-        dda_out_t dda_result_r = dda(x + 4, &dda_in, &cam_state, &worldMap2[0], 24);
-        draw_dda(half_h, x + bundle_width - 1, &dda_result_r);
-        
-        if (dda_result_l.wall_x == dda_result_r.wall_x && dda_result_l.wall_y == dda_result_r.wall_y && dda_result_l.wall_type == dda_result_r.wall_type && dda_result_l.side == dda_result_r.side)
-        {
-            // Render intermediate columns by interpolating the two end results
-            interp0->base[0] = dda_result_l.lineHeight;
-            interp0->base[1] = dda_result_r.lineHeight;
-            for (int j = 1; j < bundle_width - 1; j++)
-            {
-                interp0->accum[1] = j * bundle_lerp_step;
-                draw_wall(half_h, x + j, uint16_t(interp0->peek[1]), dda_result_l.wall_type, dda_result_l.side);
-            }
-        }
-        else
-        {
-            // Two rays hit different walls, do all of the intermediate rays
-            for (int j = 1; j < bundle_width - 1; j++)
-            {
-                dda_out_t dda_result_j = dda(x + j, &dda_in, &cam_state, &worldMap2[0], 24);
-                draw_dda(half_h, x + j, &dda_result_j);
-            }
-        }
-    }
+    //draw_floor();
+    draw_walls();
 
     pen(rgb(14, 14, 14));
-    text(str(stats.idle, 2), 0, 0);
+    text(str(_dt->w, 2), 0, 0);
     text(str(stats.update_us, 2), 0, 15);
     text(str(stats.draw_us, 2), 0, 30);
     text(str(stats.flip_us, 2), 0, 45);
