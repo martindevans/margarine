@@ -8,6 +8,7 @@
 
 #include "render/dda.h"
 #include "render/texture_mapping.h"
+#include "render/hud.h"
 
 using namespace picosystem;
 
@@ -53,8 +54,8 @@ color_t worldCol[] = {
     rgb(9, 0, 13),
 };
 
-#define texWidth 64
-#define texHeight 64
+#define texWidth 32
+#define texHeight 32
 uint16_t texture[texWidth * texHeight];
 
 camera_state_t cam_state = 
@@ -71,16 +72,15 @@ color_t bg = 0;
 
 void init()
 {
-    //generate some textures
+    // generate floor texture
     for(int x = 0; x < texWidth; x++)
     for(int y = 0; y < texHeight; y++)
-        texture[x + y * texWidth] = rgb(x % 15, y % 15, 0);
+        texture[x + y * texWidth] = rgb(x<(texWidth/2) ? 15 : 3, y<(texHeight/2) ? 15 : 3, 4);
 }
 
 uint8_t sample_world_map(int x, int y)
 {
-    uint8_t worldMapWidth = 24;
-    return worldMap2[x + y * worldMapWidth];
+    return worldMap2[x + y * mapWidth];
 }
 
 void __time_critical_func(update)(uint32_t tick)
@@ -141,25 +141,27 @@ void __time_critical_func(draw_walls)()
 
 void __time_critical_func(draw_floor)()
 {
-    uint16_t w = SCREEN->w;
-    uint16_t h = SCREEN->h;
+    uint16_t w = _dt->w;
+    uint16_t h = _dt->h;
     uint16_t half_h = h / 2;
 
-    //FLOOR CASTING
+    // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
+    float rayDirX0 = cam_state.dirX - cam_state.planeX;
+    float rayDirY0 = cam_state.dirY - cam_state.planeY;
+    float rayDirX1 = cam_state.dirX + cam_state.planeX;
+    float rayDirY1 = cam_state.dirY + cam_state.planeY;
+
     for (int y = 0; y < half_h; y++)
     {
-        // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
-        float rayDirX0 = cam_state.dirX - cam_state.planeX;
-        float rayDirY0 = cam_state.dirY - cam_state.planeY;
-        float rayDirX1 = cam_state.dirX + cam_state.planeX;
-        float rayDirY1 = cam_state.dirY + cam_state.planeY;
-
         // Current y position compared to the center of the screen (the horizon)
         int p = y - half_h;
 
+        // Vertical position of the camera.
+        float posZ = 1 - 0.5 * h;
+
         // Horizontal distance from the camera to the floor for the current row.
         // 0.5 is the z position exactly in the middle between floor and ceiling.
-        float rowDistance = half_h / p;
+        float rowDistance = posZ / p;
 
         // calculate the real world step vector we have to add for each x (parallel to camera plane)
         // adding step by step avoids multiplications with a weight in the inner loop
@@ -170,54 +172,57 @@ void __time_critical_func(draw_floor)()
         float floorX = cam_state.posX + rowDistance * rayDirX0;
         float floorY = cam_state.posY + rowDistance * rayDirY0;
 
-        // for(int x = 0; x < w; ++x)
-        // {
-        //     // the cell coord is simply got from the integer parts of floorX and floorY
-        //     int cellX = int(floorX);
-        //     int cellY = int(floorY);
-
-        //     // get the texture coordinate from the fractional part
-        //     int tx = (int)(texWidth * (floorX - cellX)) & (texWidth - 1);
-        //     int ty = (int)(texHeight * (floorY - cellY)) & (texHeight - 1);
-
-        //     floorX += floorStepX;
-        //     floorY += floorStepY;
-
-        //     // choose texture and draw the pixel
-        //     uint16_t color;
-
-        //     // floor
-        //     color = texture[texWidth * ty + tx];
-        //     *(_dt->p(x, y)) = color;
-
-        //     //ceiling (symmetrical, at screenHeight - y - 1 instead of y)
-        //     color = texture[texWidth * ty + tx];
-        //     *(_dt->p(x, h - y - 1)) = color;
-        // }
-
-        texture_mapping_setup(texture, 6, 6, 16);
-        texture_mapped_span_begin(65536 * floorX, 65536 * floorY, 65536 * floorStepX, 65536 * floorStepY);
-        uint16_t *dst = _dt->p(0, y);
-        for (int x = 0; x < w; x++)
+        for(int x = 0; x < w; ++x)
         {
-            *dst = texture_mapped_span_next();
-            dst++;
+            // the cell coord is simply got from the integer parts of floorX and floorY
+            int cellX = int(floorX);
+            int cellY = int(floorY);
+
+            // get the texture coordinate from the fractional part
+            int tx = (int)(texWidth * (floorX - cellX)) & (texWidth - 1);
+            int ty = (int)(texHeight * (floorY - cellY)) & (texHeight - 1);
+
+            floorX += floorStepX;
+            floorY += floorStepY;
+
+            // ceiling
+            uint16_t color = texture[texWidth * ty + tx];
+            *(_dt->p(x, y)) = color;
+
+            // floor (symmetrical, at screenHeight - y - 1 instead of y)
+            color = texture[texWidth * ty + tx];
+            *(_dt->p(x, h - y - 1)) = color;
         }
 
+        // // This definitely explodes when values are negative!
+        // float u = floorX * texWidth;
+        // float v = floorY * texHeight;
+        // float du = floorStepX * texWidth;
+        // float dv = floorStepY * texHeight;
+        // texture_mapping_setup(5, 16);
+        // texture_mapped_span_begin(uint32_t(65536 * u), uint32_t(65536 * v), uint32_t(65536 * du), uint32_t(65536 * dv));
+        // uint16_t *dst = _dt->p(0, y);
+        // for (int x = 0; x < w; x++)
+        // {
+        //     *dst = *(texture + texture_mapped_span_next());
+        //     dst++;
+        // }
     }
 }
 
 void __time_critical_func(draw)(uint32_t tick)
 {
-    blend(COPY);
-    pen(rgb(0, 0, 0));
-    clear();
+    // blend(COPY);
+    // pen(rgb(0, 0, 0));
+    // clear();
 
-    //draw_floor();
+    draw_floor();
     draw_walls();
 
+    draw_battery_indicator();
+
     pen(rgb(14, 14, 14));
-    text(str(_dt->w, 2), 0, 0);
+    text(str(stats.fps, 1), 0, 0);
     text(str(stats.update_us, 2), 0, 15);
     text(str(stats.draw_us, 2), 0, 30);
     text(str(stats.flip_us, 2), 0, 45);

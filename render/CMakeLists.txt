@@ -1,8 +1,10 @@
 add_library(render INTERFACE)
 
 target_sources(render INTERFACE
-    dda.h,
+    dda.h
     dda.cpp
+    hud.h
+    hud.cpp
 )
 
 target_include_directories(render INTERFACE ${CMAKE_CURRENT_LIST_DIR})

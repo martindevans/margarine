@@ -1,20 +1,21 @@
 #include "hardware/interp.h"
 
-void texture_mapping_setup(uint16_t *texture, uint texture_width_bits, uint texture_height_bits, uint uv_fractional_bits)
+void texture_mapping_setup(uint texture_size_bits, uint uv_fractional_bits)
 {
     interp_config cfg = interp_default_config();
     // set add_raw flag to use raw (un-shifted and un-masked) lane accumulator value when adding
     // it to the the lane base to make the lane result
     interp_config_set_add_raw(&cfg, true);
     interp_config_set_shift(&cfg, uv_fractional_bits);
-    interp_config_set_mask(&cfg, 0, texture_width_bits - 1);
+    interp_config_set_mask(&cfg, 0, texture_size_bits - 1);
     interp_set_config(interp0, 0, &cfg);
 
-    interp_config_set_shift(&cfg, uv_fractional_bits - texture_width_bits);
-    interp_config_set_mask(&cfg, texture_width_bits, texture_width_bits + texture_height_bits - 1);
+    interp_config_set_shift(&cfg, uv_fractional_bits - texture_size_bits);
+    interp_config_set_mask(&cfg, texture_size_bits, texture_size_bits + texture_size_bits - 1);
     interp_set_config(interp0, 1, &cfg);
 
-    interp0->base[2] = (uintptr_t) texture;
+    //interp0->base[2] = (uintptr_t) texture;
+    interp0->base[2] = 0;
 }
 
 inline void texture_mapped_span_begin(uint32_t u, uint32_t v, uint32_t du, uint32_t dv)
@@ -39,7 +40,7 @@ inline uint16_t texture_mapped_span_next()
 
     // result2 is the texture address for the current pixel;
     // popping the result advances to the next iteration
-    return *(uint16_t*)interp0->pop[2];
+    return interp0->pop[2];
 }
 
 void texture_mapped_span(uint16_t *output, uint32_t u, uint32_t v, uint32_t du, uint32_t dv, uint count)

@@ -192,15 +192,25 @@ void render_walls_in_range(int min_x, int max_x, camera_state_t *cam_state, uint
         
         if (dda_result_l.wall_x == dda_result_r.wall_x && dda_result_l.wall_y == dda_result_r.wall_y && dda_result_l.wall_type == dda_result_r.wall_type && dda_result_l.side == dda_result_r.side)
         {
-            // Render intermediate columns by interpolating the two end results
-            interp0->base[0] = dda_result_l.lineHeight;
-            interp0->base[1] = dda_result_r.lineHeight;
-            interp0->accum[1] = bundle_lerp_step;
-            for (int j = 1; j < bundle_width; j++)
+            if (dda_result_l.lineHeight > _dt->h && dda_result_r.lineHeight > _dt->h)
             {
-                interp0->accum[1] += bundle_lerp_step;
-                float lerped = dda_result_l.lineHeight + (dda_result_r.lineHeight - dda_result_l.lineHeight) * (j / (float)(bundle_width - 1)); //todo: use higher precision interpolator instead of floats
-                draw_wall(half_h, x + j, uint16_t(lerped), dda_result_l.wall_type, dda_result_l.side, wallColor);
+                // Both sides are taller than the screen, fill the area
+                uint16_t lineHeight = uint16_t(dda_result_l.lineHeight);
+                for (int j = 1; j < bundle_width; j++)
+                    draw_wall(half_h, x + j, lineHeight, dda_result_l.wall_type, dda_result_l.side, wallColor);
+            }
+            else
+            {
+                // Render intermediate columns by interpolating the two end results
+                interp0->base[0] = int32_t(dda_result_l.lineHeight);
+                interp0->base[1] = int32_t(dda_result_r.lineHeight);
+                interp0->accum[1] = bundle_lerp_step;
+                for (int j = 1; j < bundle_width; j++)
+                {
+                    //float lerped = dda_result_l.lineHeight + (dda_result_r.lineHeight - dda_result_l.lineHeight) * (j / (float)(bundle_width - 1)); //todo: use higher precision interpolator instead of floats
+                    draw_wall(half_h, x + j, interp0->peek[1], dda_result_l.wall_type, dda_result_l.side, wallColor);
+                    interp0->accum[1] += bundle_lerp_step;
+                }
             }
         }
         else
