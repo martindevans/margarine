@@ -75,7 +75,7 @@ void init()
     // generate floor texture
     for(int x = 0; x < texWidth; x++)
     for(int y = 0; y < texHeight; y++)
-        texture[x + y * texWidth] = rgb(x<(texWidth/2) ? 15 : 3, y<(texHeight/2) ? 15 : 3, 4);
+        texture[x + y * texWidth] = rgb(x<(texWidth/2) ? 11 : 3, y<(texHeight/2) ? 12 : 3, 4);
 }
 
 uint8_t sample_world_map(int x, int y)
@@ -153,6 +153,9 @@ void __time_critical_func(draw_floor)()
 
     for (int y = 0; y < half_h; y++)
     {
+        uint16_t *dst_top = _dt->p(0, y);
+        uint16_t *dst_bot = _dt->p(0, h - y - 1);
+
         // Current y position compared to the center of the screen (the horizon)
         int p = y - half_h;
 
@@ -172,41 +175,31 @@ void __time_critical_func(draw_floor)()
         float floorX = cam_state.posX + rowDistance * rayDirX0;
         float floorY = cam_state.posY + rowDistance * rayDirY0;
 
-        for(int x = 0; x < w; ++x)
+        float u = (floorX - int(floorX)) * texWidth;
+        while (u < 0)
+            u += texWidth;
+        float v = (floorY - int(floorY)) * texHeight;
+        while (v < 0)
+            v += texHeight;
+        float du = floorStepX * texWidth;
+        while (du < 0)
+            du += texWidth;
+        float dv = floorStepY * texHeight;
+        while (dv < 0)
+            dv += texHeight;    
+
+        texture_mapping_setup(5, 16);
+        texture_mapped_span_begin(uint32_t(65536 * u), uint32_t(65536 * v), uint32_t(65536 * du), uint32_t(65536 * dv));
+        for (int x = 0; x < w; x++)
         {
-            // the cell coord is simply got from the integer parts of floorX and floorY
-            int cellX = int(floorX);
-            int cellY = int(floorY);
+            int pixel_idx = texture_mapped_span_next();
 
-            // get the texture coordinate from the fractional part
-            int tx = (int)(texWidth * (floorX - cellX)) & (texWidth - 1);
-            int ty = (int)(texHeight * (floorY - cellY)) & (texHeight - 1);
+            *dst_top = texture[pixel_idx];
+            dst_top++;
 
-            floorX += floorStepX;
-            floorY += floorStepY;
-
-            // ceiling
-            uint16_t color = texture[texWidth * ty + tx];
-            *(_dt->p(x, y)) = color;
-
-            // floor (symmetrical, at screenHeight - y - 1 instead of y)
-            color = texture[texWidth * ty + tx];
-            *(_dt->p(x, h - y - 1)) = color;
+            *dst_bot = texture[pixel_idx];
+            dst_bot++;
         }
-
-        // // This definitely explodes when values are negative!
-        // float u = floorX * texWidth;
-        // float v = floorY * texHeight;
-        // float du = floorStepX * texWidth;
-        // float dv = floorStepY * texHeight;
-        // texture_mapping_setup(5, 16);
-        // texture_mapped_span_begin(uint32_t(65536 * u), uint32_t(65536 * v), uint32_t(65536 * du), uint32_t(65536 * dv));
-        // uint16_t *dst = _dt->p(0, y);
-        // for (int x = 0; x < w; x++)
-        // {
-        //     *dst = *(texture + texture_mapped_span_next());
-        //     dst++;
-        // }
     }
 }
 
