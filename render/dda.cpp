@@ -164,7 +164,7 @@ inline void draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, uint16_
     draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, dda_result->side, wallColor);
 }
 
-void render_walls_in_range(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, uint16_t *wallColor)
+void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, uint16_t *wallColor)
 {
     uint16_t half_h = _dt->h / 2;
     dda_in_t dda_in = {

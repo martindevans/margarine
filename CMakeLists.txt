@@ -6,6 +6,7 @@ set(PROJECT_SOURCES
     main.cpp
     render/dda.cpp
     render/hud.cpp
+    render/planes.cpp
 )
 
 # --- Here Be Boilerplate ---

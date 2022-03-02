@@ -1,3 +1,5 @@
+#pragma once
+
 typedef struct camera_state
 {
     float posX;

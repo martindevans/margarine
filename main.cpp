@@ -6,8 +6,12 @@
 #include "hardware/dma.h"
 #include "hardware/interp.h"
 
+#include "content/sprites/tile.h"
+
 #include "render/dda.h"
+#include "render/planes.h"
 #include "render/texture_mapping.h"
+#include "render/texture.h"
 #include "render/hud.h"
 
 using namespace picosystem;
@@ -56,7 +60,16 @@ color_t worldCol[] = {
 
 #define texWidth 32
 #define texHeight 32
+#define texWidthBits 5
+#define texHeightBits 5
 uint16_t texture[texWidth * texHeight];
+
+texture_mipmap_t floor_texture_mip = {
+    .pixels = &testtile_mip_chain[0],
+    .size_bits = 5,
+    .size = 32,
+    .mip_chain_length = 5
+};
 
 camera_state_t cam_state = 
 {
@@ -69,6 +82,7 @@ camera_state_t cam_state =
 };
 
 color_t bg = 0;
+int brightness = 100;
 
 void init()
 {
@@ -85,27 +99,30 @@ uint8_t sample_world_map(int x, int y)
 
 void __time_critical_func(update)(uint32_t tick)
 {
+    if (button(B))
+        brightness = brightness <= 15 ? 15 : (brightness - 1);
+    else if (button(X))
+        brightness = brightness >= 100 ? 100 : (brightness + 1);
+    backlight(brightness);
+
     float rotSpeed = _PI * 0.8 / 40.0;
-
-    if(button(RIGHT))
+    float cosrs, sinrs;
+    bool turn = false;
+    if (button(RIGHT))
     {
-        float cosrs = cos(-rotSpeed);
-        float sinrs = sin(-rotSpeed);
-
-        //both camera direction and camera plane must be rotated
-        float oldDirX = cam_state.dirX;
-        cam_state.dirX = cam_state.dirX * cosrs - cam_state.dirY * sinrs;
-        cam_state.dirY = oldDirX * sinrs + cam_state.dirY * cosrs;
-        float oldPlaneX = cam_state.planeX;
-        cam_state.planeX = cam_state.planeX * cosrs - cam_state.planeY * sinrs;
-        cam_state.planeY = oldPlaneX * sinrs + cam_state.planeY * cosrs;
+        cosrs = cos(-rotSpeed);
+        sinrs = sin(-rotSpeed);
+        turn = true;
+    }
+    else if (button(LEFT))
+    {
+        cosrs = cos(rotSpeed);
+        sinrs = sin(rotSpeed);
+        turn = true;
     }
 
-    if(button(LEFT))
+    if (turn)
     {
-        float cosrs = cos(rotSpeed);
-        float sinrs = sin(rotSpeed);
-
         float oldDirX = cam_state.dirX;
         cam_state.dirX = cam_state.dirX * cosrs - cam_state.dirY * sinrs;
         cam_state.dirY = oldDirX * sinrs + cam_state.dirY * cosrs;
@@ -141,79 +158,20 @@ void __time_critical_func(draw_walls)()
 
 void __time_critical_func(draw_floor)()
 {
-    uint16_t w = _dt->w;
-    uint16_t h = _dt->h;
-    uint16_t half_h = h / 2;
-
-    // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
-    float rayDirX0 = cam_state.dirX - cam_state.planeX;
-    float rayDirY0 = cam_state.dirY - cam_state.planeY;
-    float rayDirX1 = cam_state.dirX + cam_state.planeX;
-    float rayDirY1 = cam_state.dirY + cam_state.planeY;
-
-    for (int y = 0; y < half_h; y++)
-    {
-        uint16_t *dst_top = _dt->p(0, y);
-        uint16_t *dst_bot = _dt->p(0, h - y - 1);
-
-        // Current y position compared to the center of the screen (the horizon)
-        int p = y - half_h;
-
-        // Vertical position of the camera.
-        float posZ = 1 - 0.5 * h;
-
-        // Horizontal distance from the camera to the floor for the current row.
-        // 0.5 is the z position exactly in the middle between floor and ceiling.
-        float rowDistance = posZ / p;
-
-        // calculate the real world step vector we have to add for each x (parallel to camera plane)
-        // adding step by step avoids multiplications with a weight in the inner loop
-        float floorStepX = rowDistance * (rayDirX1 - rayDirX0) / w;
-        float floorStepY = rowDistance * (rayDirY1 - rayDirY0) / w;
-
-        // real world coordinates of the leftmost column. This will be updated as we step to the right.
-        float floorX = cam_state.posX + rowDistance * rayDirX0;
-        float floorY = cam_state.posY + rowDistance * rayDirY0;
-
-        float u = (floorX - int(floorX)) * texWidth;
-        while (u < 0)
-            u += texWidth;
-        float v = (floorY - int(floorY)) * texHeight;
-        while (v < 0)
-            v += texHeight;
-        float du = floorStepX * texWidth;
-        while (du < 0)
-            du += texWidth;
-        float dv = floorStepY * texHeight;
-        while (dv < 0)
-            dv += texHeight;    
-
-        texture_mapping_setup(5, 16);
-        texture_mapped_span_begin(uint32_t(65536 * u), uint32_t(65536 * v), uint32_t(65536 * du), uint32_t(65536 * dv));
-        for (int x = 0; x < w; x++)
-        {
-            int pixel_idx = texture_mapped_span_next();
-
-            *dst_top = texture[pixel_idx];
-            dst_top++;
-
-            *dst_bot = texture[pixel_idx];
-            dst_bot++;
-        }
-    }
+    render_planes(0, 60, &cam_state, &floor_texture_mip);
+    render_planes(60, 120, &cam_state, &floor_texture_mip);
 }
 
 void __time_critical_func(draw)(uint32_t tick)
 {
-    // blend(COPY);
-    // pen(rgb(0, 0, 0));
-    // clear();
-
+    // Draw 3D world
     draw_floor();
     draw_walls();
 
+    // Draw HUD
     draw_battery_indicator();
 
+    // Debug stuff
     pen(rgb(14, 14, 14));
     text(str(stats.fps, 1), 0, 0);
     text(str(stats.update_us, 2), 0, 15);
