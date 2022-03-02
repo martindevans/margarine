@@ -25,7 +25,17 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
 
     for (int y = min_y; y < max_y; y++)
     {
-        uint mip_level = MIN(y >> 5, floor_texture->mip_chain_length - 1);
+        uint mip_level = 0;
+        switch (y)
+        {
+            case 0   ... 60:  mip_level = 0; break;
+            case 61  ... 85:  mip_level = 1; break;
+            case 86  ... 100: mip_level = 2; break;
+            case 101 ... 107: mip_level = 3; break;
+            case 108 ... 112: mip_level = 4; break;
+            default:          mip_level = 5; break;
+        }
+        //MIN((y * y) > 11, floor_texture->mip_chain_length - 1);
         uint mip_level_size_bits = floor_texture->size_bits - mip_level;
 
         uint16_t *dst_top = _dt->p(0, y);
