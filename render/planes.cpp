@@ -11,6 +11,7 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
     uint16_t w = _dt->w;
     uint16_t h = _dt->h;
     uint16_t half_h = h / 2;
+    uint max_mip_level = floor_texture->mip_chain_length - 1;
 
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
     float rayDirX0 = cam_state->dirX - cam_state->planeX;
@@ -28,14 +29,15 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
         uint mip_level = 0;
         switch (y)
         {
-            case 0   ... 60:  mip_level = 0; break;
-            case 61  ... 85:  mip_level = 1; break;
-            case 86  ... 100: mip_level = 2; break;
-            case 101 ... 107: mip_level = 3; break;
-            case 108 ... 112: mip_level = 4; break;
-            default:          mip_level = 5; break;
+            case 0   ... 45:  mip_level = 0; break;
+            case 46  ... 70:  mip_level = 1; break;
+            case 71  ... 85:  mip_level = 2; break;
+            case 86  ... 95:  mip_level = 3; break;
+            case 96  ... 105: mip_level = 4; break;
+            case 106 ... 111: mip_level = 5; break;
+            default:          mip_level = 6; break;
         }
-        //MIN((y * y) > 11, floor_texture->mip_chain_length - 1);
+        mip_level = MIN(mip_level, max_mip_level);
         uint mip_level_size_bits = floor_texture->size_bits - mip_level;
 
         uint16_t *dst_top = _dt->p(0, y);
@@ -81,22 +83,22 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
         {
             uint pixel_idx = texture_mapped_span_next();
 
-            color_t color;
+            color_t c;
             if (mip_level == 0)
             {
-                color = sample_texture(floor_texture, pixel_idx, 0);
+                c = sample_texture(floor_texture, pixel_idx, mip_level);
             }
             else
             {
                 int px_x = pixel_idx >> (floor_texture->size_bits * 2 - mip_level_size_bits);
                 int px_y = (pixel_idx & (floor_texture->size - 1)) >> (floor_texture->size_bits - mip_level_size_bits);
-                color = sample_texture(floor_texture, px_x, px_y, mip_level);
+                c = sample_texture(floor_texture, px_y, px_x, mip_level);
             }
             
-            *dst_top = color;
+            *dst_top = c;
             dst_top++;
 
-            *dst_bot = color;
+            *dst_bot = c;
             dst_bot++;
         }
     }

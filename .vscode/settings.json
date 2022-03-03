@@ -4,6 +4,8 @@
         "string": "cpp",
         "string_view": "cpp",
         "cmath": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp"
     }
 }

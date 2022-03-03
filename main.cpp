@@ -6,7 +6,10 @@
 #include "hardware/dma.h"
 #include "hardware/interp.h"
 
-#include "content/sprites/tile.h"
+#include "content/sprites/test_tile/tile.h"
+#include "content/sprites/walls/wood/wood.h"
+#include "content/sprites/walls/stone3/stone3.h"
+#include "content/sprites/walls/stone2/stone2.h"
 
 #include "render/dda.h"
 #include "render/planes.h"
@@ -58,17 +61,32 @@ color_t worldCol[] = {
     rgb(9, 0, 13),
 };
 
-#define texWidth 32
-#define texHeight 32
-#define texWidthBits 5
-#define texHeightBits 5
-uint16_t texture[texWidth * texHeight];
-
 texture_mipmap_t floor_texture_mip = {
     .pixels = &testtile_mip_chain[0],
     .size_bits = 5,
     .size = 32,
     .mip_chain_length = 5
+};
+
+texture_mipmap_t wall_wood_texture_mip = {
+    .pixels = &wall_wood_mip_chain[0],
+    .size_bits = 6,
+    .size = 64,
+    .mip_chain_length = 4
+};
+
+texture_mipmap_t wall_stone3_texture_mip = {
+    .pixels = &wall_stone3_mip_chain[0],
+    .size_bits = 6,
+    .size = 64,
+    .mip_chain_length = 5
+};
+
+texture_mipmap_t wall_stone2_texture_mip = {
+    .pixels = &wall_stone2_mip_chain[0],
+    .size_bits = 6,
+    .size = 64,
+    .mip_chain_length = 6
 };
 
 camera_state_t cam_state = 
@@ -86,10 +104,6 @@ int brightness = 100;
 
 void init()
 {
-    // generate floor texture
-    for(int x = 0; x < texWidth; x++)
-    for(int y = 0; y < texHeight; y++)
-        texture[x + y * texWidth] = rgb(x<(texWidth/2) ? 11 : 3, y<(texHeight/2) ? 12 : 3, 4);
 }
 
 uint8_t sample_world_map(int x, int y)
@@ -158,8 +172,8 @@ void __time_critical_func(draw_walls)()
 
 void __time_critical_func(draw_floor)()
 {
-    render_planes(0, 60, &cam_state, &floor_texture_mip);
-    render_planes(60, 120, &cam_state, &floor_texture_mip);
+    render_planes(0, 60, &cam_state, &wall_stone2_texture_mip);
+    render_planes(60, 120, &cam_state, &wall_stone2_texture_mip);
 }
 
 void __time_critical_func(draw)(uint32_t tick)
