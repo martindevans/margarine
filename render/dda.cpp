@@ -108,10 +108,10 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, 
         wallX = cam_in->posX + perpWallDist * rayDirX;
     wallX -= int(wallX);
 
-    // // x coordinate on the texture
-    // int texX = int(wallX * double(texWidth));
-    // if ((side == 0 && rayDirX > 0) || (side == 1 && rayDirY < 0))
-    //     texX = texWidth - texX - 1;
+    // x coordinate on the texture
+    float texX = wallX;
+    if ((side == 0 && rayDirX > 0) || (side == 1 && rayDirY < 0))
+        texX = 1 - texX;
 
     return dda_out_t
     {
@@ -120,51 +120,68 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, 
         .wall_type = wall_type,
         .side = side,
         .lineHeight = lineHeight,
-        .texture_coord = wallX
+        .texture_coord = texX
     };
 }
 
-inline void fast_vline(uint16_t color, int16_t x, int16_t y, int16_t count)
+inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8_t wall_type, texture_mipmap **wall_textures, float uf_coord)
 {
-    color_t *dst = _dt->p(x, y);
+    // Choose wall texture
+    texture_mipmap *tex = wall_textures[wall_type];
+    uint u_coord = uint(uf_coord * tex->size);
+
+    // Determine y step of texture coordinates
+    uint32_t v_coord = 0;
+    uint32_t v_step = uint32_t(65536 * ((float)tex->size / (float)lineHeightInt));
+
+    // Choose mip level based on wall height
+    uint mip_level = 0;
+    switch (lineHeightInt)
+    {
+        case 0   ... 20:  mip_level = 5; break;
+        case 21  ... 30:  mip_level = 4; break;
+        case 31  ... 45:  mip_level = 3; break;
+        case 46  ... 70:  mip_level = 2; break;
+        case 71  ... 140: mip_level = 1; break;
+        case 141 ... 240: mip_level = 0; break;
+        default:          mip_level = 0; break;
+    }
+    mip_level = MIN(mip_level, tex->mip_chain_length - 1);
+
+    // Determine the range of pixels to fill
+    int16_t drawStart = half_h - lineHeightInt / 2;
+    int16_t drawEnd = drawStart + lineHeightInt;
+    if (drawStart < 0)
+    {
+        v_coord += v_step * -drawStart;
+        drawStart = 0;
+    }
+    if (drawEnd > _dt->h)
+        drawEnd = _dt->h;    
+
+    // Setup interpolator
+    interp_config cfg = interp_default_config();
+    interp_set_config(interp1, 0, &cfg);
+    interp1->accum[0] = v_coord;
+    interp1->base[0] = v_step;
+
+    // Draw the pixels of the stripe as a vertical line
+    uint count = drawEnd - drawStart;
+    color_t *dst = _dt->p(x, drawStart);
     while (count-- > 0)
     {
-        *dst = color;
+        *dst = sample_texture(tex, u_coord, interp1->pop[0] >> 16, mip_level);
+        v_coord += v_step;
         dst += _dt->w;
     }
 }
 
-inline void clamp_vline(int16_t *start, int16_t *end)
+inline void draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, texture_mipmap **wall_textures)
 {
-    if (*start < 0)
-        *start = 0;
-    if (*end > _dt->h)
-        *end = _dt->h;
+    draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, wall_textures, dda_result->texture_coord);
 }
 
-inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8_t wall_type, int side, uint16_t *wallColor)
-{
-    // Determine the range of pixels to fill
-    int16_t drawStart = half_h - lineHeightInt / 2;
-    int16_t drawEnd = drawStart + lineHeightInt;
-    clamp_vline(&drawStart, &drawEnd);
-    int16_t lineHeight = drawEnd - drawStart;
-
-    // Choose wall color
-    color_t color = wallColor[wall_type];
-    if (side == 1)
-        color = color / 2;
-
-    // Draw the pixels of the stripe as a vertical line
-    fast_vline(color, x, drawStart, lineHeight);
-}
-
-inline void draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, uint16_t *wallColor)
-{
-    draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, dda_result->side, wallColor);
-}
-
-void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, uint16_t *wallColor)
+void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, texture_mipmap **wall_textures)
 {
     uint16_t half_h = _dt->h / 2;
     dda_in_t dda_in = {
@@ -187,17 +204,18 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
 
     for (int x = min_x; x < max_x - bundle_width + 1; x += bundle_width)
     {
-        draw_dda(half_h, x, &dda_result_l, wallColor);
+        draw_dda(half_h, x, &dda_result_l, wall_textures);
         dda_out_t dda_result_r = dda(x + bundle_width, &dda_in, cam_state, worldMap, mapWidth);
-        
-        if (dda_result_l.wall_x == dda_result_r.wall_x && dda_result_l.wall_y == dda_result_r.wall_y && dda_result_l.wall_type == dda_result_r.wall_type && dda_result_l.side == dda_result_r.side)
+    
+        // todo: restore this optimisation
+        if (false && dda_result_l.wall_x == dda_result_r.wall_x && dda_result_l.wall_y == dda_result_r.wall_y && dda_result_l.wall_type == dda_result_r.wall_type && dda_result_l.side == dda_result_r.side)
         {
             if (dda_result_l.lineHeight > _dt->h && dda_result_r.lineHeight > _dt->h)
             {
                 // Both sides are taller than the screen, fill the area
                 uint16_t lineHeight = uint16_t(dda_result_l.lineHeight);
                 for (int j = 1; j < bundle_width; j++)
-                    draw_wall(half_h, x + j, lineHeight, dda_result_l.wall_type, dda_result_l.side, wallColor);
+                    draw_wall(half_h, x + j, lineHeight, dda_result_l.wall_type, wall_textures, 0.5f); //todo: texcoord
             }
             else
             {
@@ -207,8 +225,7 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
                 interp0->accum[1] = bundle_lerp_step;
                 for (int j = 1; j < bundle_width; j++)
                 {
-                    //float lerped = dda_result_l.lineHeight + (dda_result_r.lineHeight - dda_result_l.lineHeight) * (j / (float)(bundle_width - 1)); //todo: use higher precision interpolator instead of floats
-                    draw_wall(half_h, x + j, interp0->peek[1], dda_result_l.wall_type, dda_result_l.side, wallColor);
+                    draw_wall(half_h, x + j, interp0->peek[1], dda_result_l.wall_type, wall_textures, 0.5f); //todo: texcoord
                     interp0->accum[1] += bundle_lerp_step;
                 }
             }
@@ -219,7 +236,7 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
             for (int j = 1; j < bundle_width; j++)
             {
                 dda_out_t dda_result_j = dda(x + j, &dda_in, cam_state, worldMap, mapWidth);
-                draw_dda(half_h, x + j, &dda_result_j, wallColor);
+                draw_dda(half_h, x + j, &dda_result_j, wall_textures);
             }
         }
 

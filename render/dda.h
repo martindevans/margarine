@@ -1,5 +1,7 @@
 #pragma once
 
+#include "texture.h"
+
 typedef struct camera_state
 {
     float posX;
@@ -28,4 +30,4 @@ typedef struct dda_out
 
 dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, uint8_t map_width);
 
-void render_walls_in_range(int min_x, int x_range, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, uint16_t *wallColor);
+void render_walls_in_range(int min_x, int x_range, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, texture_mipmap **wall_textures);

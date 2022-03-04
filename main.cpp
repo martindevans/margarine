@@ -89,6 +89,18 @@ texture_mipmap_t wall_stone2_texture_mip = {
     .mip_chain_length = 6
 };
 
+texture_mipmap_t *wall_textures[] = {
+    NULL,
+    &floor_texture_mip,
+    &wall_wood_texture_mip,
+    &wall_stone3_texture_mip,
+    &wall_stone2_texture_mip,
+    &floor_texture_mip,
+    &wall_wood_texture_mip,
+    &wall_stone3_texture_mip,
+    &wall_stone2_texture_mip,
+};
+
 camera_state_t cam_state = 
 {
     .posX = 4,
@@ -166,8 +178,8 @@ void __time_critical_func(update)(uint32_t tick)
 
 void __time_critical_func(draw_walls)()
 {
-    render_walls_in_range(0, 120, &cam_state, worldMap2, mapWidth, &worldCol[0]);
-    render_walls_in_range(120, 240, &cam_state, worldMap2, mapWidth, &worldCol[0]);
+    render_walls_in_range(0, 120, &cam_state, worldMap2, mapWidth, &wall_textures[0]);
+    render_walls_in_range(120, 240, &cam_state, worldMap2, mapWidth, &wall_textures[0]);
 }
 
 void __time_critical_func(draw_floor)()

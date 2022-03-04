@@ -90,8 +90,8 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
             }
             else
             {
-                int px_x = pixel_idx >> (floor_texture->size_bits * 2 - mip_level_size_bits);
-                int px_y = (pixel_idx & (floor_texture->size - 1)) >> (floor_texture->size_bits - mip_level_size_bits);
+                int px_x = pixel_idx >> floor_texture->size_bits;
+                int px_y = pixel_idx & (floor_texture->size - 1);
                 c = sample_texture(floor_texture, px_y, px_x, mip_level);
             }
             

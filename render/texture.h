@@ -24,6 +24,9 @@ inline picosystem::color_t sample_texture(const texture_t *texture, uint x, uint
 
 inline picosystem::color_t sample_texture(const texture_mipmap_t *texture, uint x, uint y, uint mip)
 {
+    x >>= mip;
+    y >>= mip;
+
     uint size = 1 << (texture->size_bits - mip);
     return texture->pixels[mip][x + y * size];
 }
