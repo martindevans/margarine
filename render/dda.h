@@ -25,9 +25,11 @@ typedef struct dda_out
     uint8_t wall_type;
     uint8_t side;
     float lineHeight;
-    float texture_coord;
+
+    // u texture coord (0 -> 8192)
+    uint16_t texture_coord;
 } dda_out_t;
 
-dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, uint8_t map_width);
+dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, uint8_t map_width, uint8_t map_height);
 
-void render_walls_in_range(int min_x, int x_range, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, texture_mipmap **wall_textures);
+void render_walls_in_range(int min_x, int x_range, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, int mapHeight, texture_mipmap **wall_textures);

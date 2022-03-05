@@ -178,8 +178,8 @@ void __time_critical_func(update)(uint32_t tick)
 
 void __time_critical_func(draw_walls)()
 {
-    render_walls_in_range(0, 120, &cam_state, worldMap2, mapWidth, &wall_textures[0]);
-    render_walls_in_range(120, 240, &cam_state, worldMap2, mapWidth, &wall_textures[0]);
+    render_walls_in_range(0, 120, &cam_state, worldMap2, mapWidth, mapHeight, &wall_textures[0]);
+    render_walls_in_range(120, 240, &cam_state, worldMap2, mapWidth, mapHeight, &wall_textures[0]);
 }
 
 void __time_critical_func(draw_floor)()
