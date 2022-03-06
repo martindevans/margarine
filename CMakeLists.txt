@@ -44,7 +44,7 @@ target_compile_definitions(margarine PRIVATE
     # Disable Pico alarm functions to save some binary space (https://raspberrypi.github.io/pico-sdk-doxygen/group__alarm.html)
     PICO_TIME_DEFAULT_ALARM_POOL_DISABLED=0
 
-    # Disable checking if this is running on aimsulated Pico hardware to save some binary space
+    # Disable checking if this is running on simulated Pico hardware to save some binary space
     PICO_NO_FPGA_CHECK=1
 
     # Enable profiling

@@ -6,12 +6,25 @@
 
 using namespace picosystem;
 
-void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *cam_state, texture_mipmap_t *floor_texture)
+void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *cam_state, texture_mipmap_t *floor_texture, uint8_t *wall_heights)
 {
     uint16_t w = _dt->w;
     uint16_t h = _dt->h;
     uint16_t half_h = h / 2;
     uint max_mip_level = floor_texture->mip_chain_length - 1;
+
+    uint8_t min_wall_height = wall_heights[0];
+    uint8_t wall_heights_prepped[w];
+    for (int i = 0; i < w; i++)
+    {
+        wall_heights_prepped[i] = (h - wall_heights[i]) / 2;
+        min_wall_height = MIN(min_wall_height, wall_heights[i]);
+    }
+    min_wall_height = (240 - min_wall_height) / 2;
+
+    // Early exit if no work needs doing (because it's all occluded by the walls)
+    if (min_y > min_wall_height)
+        return;
 
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
     float rayDirX0 = cam_state->dirX - cam_state->planeX;
@@ -26,6 +39,9 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
 
     for (int y = min_y; y < max_y; y++)
     {
+        if (y > min_wall_height)
+            break;
+
         uint mip_level = 0;
         switch (y)
         {
@@ -83,22 +99,25 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
         {
             uint pixel_idx = texture_mapped_span_next();
 
-            color_t c;
-            if (mip_level == 0)
+            if (y < wall_heights_prepped[x])
             {
-                c = sample_texture(floor_texture, pixel_idx, mip_level);
+                color_t c;
+                if (mip_level == 0)
+                {
+                    c = sample_texture(floor_texture, pixel_idx, mip_level);
+                }
+                else
+                {
+                    int px_x = pixel_idx >> floor_texture->size_bits;
+                    int px_y = pixel_idx & (floor_texture->size - 1);
+                    c = sample_texture(floor_texture, px_y, px_x, mip_level);
+                }
+                
+                *dst_top = c;
+                *dst_bot = c;
             }
-            else
-            {
-                int px_x = pixel_idx >> floor_texture->size_bits;
-                int px_y = pixel_idx & (floor_texture->size - 1);
-                c = sample_texture(floor_texture, px_y, px_x, mip_level);
-            }
-            
-            *dst_top = c;
-            dst_top++;
 
-            *dst_bot = c;
+            dst_top++;
             dst_bot++;
         }
     }

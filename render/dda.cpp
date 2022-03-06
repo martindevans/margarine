@@ -74,6 +74,8 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, 
     uint8_t wall_type = 0;
     while (wall_type <= 0)
     {
+        PROFILER_ADD(ProfilerValue_TotalDdaSteps, 1);
+
         //jump to next map square, either in x-direction, or in y-direction
         if (sideDistX_fixed < sideDistY_fixed)
         {
@@ -144,7 +146,8 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, 
 // - wall_type: type of the wall
 // - wall_textures: set of wall textures to use
 // - uf_coord: (u texture coordinate) * 8192
-inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8_t wall_type, texture_mipmap **wall_textures, uint32_t uf_coord)
+// - side: the direction this wall is being looked at
+inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8_t wall_type, texture_mipmap **wall_textures, uint32_t uf_coord, bool side)
 {
     // Choose wall texture
     texture_mipmap *tex = wall_textures[wall_type];
@@ -159,11 +162,11 @@ inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8
     switch (lineHeightInt)
     {
         case 0   ... 20:  mip_level = 5; break;
-        case 21  ... 30:  mip_level = 4; break;
-        case 31  ... 45:  mip_level = 3; break;
-        case 46  ... 70:  mip_level = 2; break;
-        case 71  ... 140: mip_level = 1; break;
-        case 141 ... 240: mip_level = 0; break;
+        case 21  ... 35:  mip_level = 4; break;
+        case 36  ... 50:  mip_level = 3; break;
+        case 51  ... 70:  mip_level = 2; break;
+        case 71  ... 150: mip_level = 1; break;
+        case 151 ... 240: mip_level = 0; break;
         default:          mip_level = 0; break;
     }
     mip_level = MIN(mip_level, tex->mip_chain_length - 1);
@@ -179,24 +182,37 @@ inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8
     if (drawEnd > _dt->h)
         drawEnd = _dt->h;    
 
+    // Darken some sides
+    //todo: sample from a per-tile lightmap
+    color_t light_map_colour = rgb(0, 0, 0);
+    uint8_t light_map_blend = 0;
+    if (side)
+        light_map_blend = 5;
+
     // Draw the pixels of the stripe as a vertical line
     uint count = drawEnd - drawStart;
     PROFILER_ADD(ProfilerValue_PaintedWallPixels, count);
     color_t *dst = _dt->p(x, drawStart);
     while (count-- > 0)
     {
-        *dst = sample_texture(tex, u_coord, v_coord >> 16, mip_level);
+        //todo: lightmapping is too slow :(
+        //color_t c = mix(sample_texture(tex, u_coord, v_coord >> 16, mip_level), light_map_colour, light_map_blend);
+
+        color_t c = sample_texture(tex, u_coord, v_coord >> 16, mip_level);
+        *dst = c;
         v_coord += v_step;
         dst += _dt->w;
     }
+
+    return uint8_t(drawEnd - drawStart);
 }
 
-inline void draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, texture_mipmap **wall_textures)
+inline uint8_t draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, texture_mipmap **wall_textures)
 {
-    draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, wall_textures, dda_result->texture_coord);
+    return draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, wall_textures, dda_result->texture_coord, dda_result->side == 0);
 }
 
-void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, int mapHeight, texture_mipmap **wall_textures)
+void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, int mapHeight, texture_mipmap **wall_textures, uint8_t *out_wall_heights)
 {
     uint16_t half_h = _dt->h / 2;
     dda_in_t dda_in = {
@@ -221,7 +237,7 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
 
     for (int x = min_x; x < max_x - bundle_width + 1; x += bundle_width)
     {
-        draw_dda(half_h, x, &dda_result_l, wall_textures);
+        out_wall_heights[x] = draw_dda(half_h, x, &dda_result_l, wall_textures);
         dda_out_t dda_result_r = dda(x + bundle_width, &dda_in, cam_state, worldMap, mapWidth, mapHeight);
     
         // todo: this optimisation doesn't calculate texture coordinates properly :(
@@ -254,7 +270,7 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
             for (int j = 1; j < bundle_width; j++)
             {
                 dda_out_t dda_result_j = dda(x + j, &dda_in, cam_state, worldMap, mapWidth, mapHeight);
-                draw_dda(half_h, x + j, &dda_result_j, wall_textures);
+                out_wall_heights[x + j] = draw_dda(half_h, x + j, &dda_result_j, wall_textures);
             }
         }
 

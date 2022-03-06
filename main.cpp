@@ -184,23 +184,25 @@ void __time_critical_func(update)(uint32_t tick)
     }
 }
 
-void __time_critical_func(draw_walls)()
+void __time_critical_func(draw_walls)(uint8_t *wall_heights)
 {
-    render_walls_in_range(0, 120, &cam_state, worldMap2, mapWidth, mapHeight, &wall_textures[0]);
-    render_walls_in_range(120, 240, &cam_state, worldMap2, mapWidth, mapHeight, &wall_textures[0]);
+    render_walls_in_range(0, 120, &cam_state, worldMap2, mapWidth, mapHeight, &wall_textures[0], wall_heights);
+    render_walls_in_range(120, 240, &cam_state, worldMap2, mapWidth, mapHeight, &wall_textures[0], wall_heights);
 }
 
-void __time_critical_func(draw_floor)()
+void __time_critical_func(draw_floor)(uint8_t *wall_heights)
 {
-    render_planes(0, 60, &cam_state, &wall_stone2_texture_mip);
-    render_planes(60, 120, &cam_state, &wall_stone2_texture_mip);
+    render_planes(0, 60, &cam_state, &wall_stone2_texture_mip, wall_heights);
+    render_planes(60, 120, &cam_state, &wall_stone2_texture_mip, wall_heights);
 }
 
 void __time_critical_func(draw)(uint32_t tick)
 {
     // Draw 3D world
-    draw_floor();
-    draw_walls();
+    uint8_t wall_heights[240];
+    draw_walls(wall_heights);
+    draw_floor(wall_heights);
+    
 
     // Draw HUD
     draw_battery_indicator();
@@ -216,6 +218,9 @@ void __time_critical_func(draw)(uint32_t tick)
     std::string draw_s = "DRAW: " + str(stats.draw_us, 2);
     text(draw_s); 
 
-    std::string profile_s = "PROFILER: " + str(*profiler_get(ProfilerValue_PaintedWallPixels), 2);
-    text(profile_s);
+    if (profiler_is_enabled())
+    {
+        std::string profile_s = "PROFILER: " + str(*profiler_get(ProfilerValue_TotalDdaSteps), 0);
+        text(profile_s);
+    }
 }

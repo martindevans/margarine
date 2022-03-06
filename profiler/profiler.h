@@ -1,13 +1,17 @@
 #pragma once
 
+#define PROFILER_VALUES \
+    ProfilerValue_InitTime, \
+    ProfilerValue_TotalDdaSteps, \
+    ProfilerValue_PaintedWallPixels, \
+    ProfilerValue_Max, \
+
 enum ProfilerValue
 {
-    ProfilerValue_InitTime,
-    ProfilerValue_PaintedWallPixels,
-
-    // Add all new values **before** this one!
-    ProfilerValue_Max
+    PROFILER_VALUES
 };
+
+bool profiler_is_enabled();
 
 void profiler_init();
 

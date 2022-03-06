@@ -6,6 +6,11 @@
 
     int32_t profiler_value;
 
+    bool profiler_is_enabled()
+    {
+        return false;
+    }
+
     void profiler_init()
     {
     }
@@ -22,6 +27,11 @@
 #else
 
     static int32_t* profiler_values;
+
+    bool profiler_is_enabled()
+    {
+        return true;
+    }
 
     void profiler_init()
     {
