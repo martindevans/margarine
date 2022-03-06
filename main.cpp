@@ -16,6 +16,7 @@
 #include "render/texture_mapping.h"
 #include "render/texture.h"
 #include "render/hud.h"
+#include "profiler/profiler.h"
 
 using namespace picosystem;
 
@@ -116,6 +117,11 @@ int brightness = 100;
 
 void init()
 {
+    PROFILER_BEGIN_TIMING(ProfilerValue_InitTime);
+    {
+        profiler_init();
+    }
+    PROFILER_END_TIMING(ProfilerValue_InitTime);
 }
 
 uint8_t sample_world_map(int x, int y)
@@ -125,6 +131,8 @@ uint8_t sample_world_map(int x, int y)
 
 void __time_critical_func(update)(uint32_t tick)
 {
+    profiler_clear();
+
     if (button(B))
         brightness = brightness <= 15 ? 15 : (brightness - 1);
     else if (button(X))
@@ -198,9 +206,16 @@ void __time_critical_func(draw)(uint32_t tick)
     draw_battery_indicator();
 
     // Debug stuff
-    pen(rgb(14, 14, 14));
-    text(str(stats.fps, 1), 0, 0);
-    text(str(stats.update_us, 2), 0, 15);
-    text(str(stats.draw_us, 2), 0, 30);
-    text(str(stats.flip_us, 2), 0, 45);
+    pen(rgb(2, 2, 2));
+    std::string fps_s = "FPS: " + str(stats.fps, 1);
+    text(fps_s);
+
+    std::string update_s = "UPDATE: " + str(stats.update_us, 2);
+    text(update_s);
+
+    std::string draw_s = "DRAW: " + str(stats.draw_us, 2);
+    text(draw_s); 
+
+    std::string profile_s = "PROFILER: " + str(*profiler_get(ProfilerValue_PaintedWallPixels), 2);
+    text(profile_s);
 }

@@ -3,6 +3,7 @@
 #include "hardware/interp.h"
 
 #include "dda.h"
+#include "../profiler/profiler.h"
 
 using namespace picosystem;
 
@@ -147,7 +148,7 @@ inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8
 {
     // Choose wall texture
     texture_mipmap *tex = wall_textures[wall_type];
-    uint u_coord = uint((uf_coord * tex->size) / 8192);
+    uint32_t u_coord = uint32_t((uf_coord * tex->size) / 8192);
 
     // Determine y step of texture coordinates
     uint32_t v_coord = 0;
@@ -180,6 +181,7 @@ inline void draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8
 
     // Draw the pixels of the stripe as a vertical line
     uint count = drawEnd - drawStart;
+    PROFILER_ADD(ProfilerValue_PaintedWallPixels, count);
     color_t *dst = _dt->p(x, drawStart);
     while (count-- > 0)
     {

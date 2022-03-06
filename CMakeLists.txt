@@ -7,6 +7,7 @@ set(PROJECT_SOURCES
     render/dda.cpp
     render/hud.cpp
     render/planes.cpp
+    profiler/profiler.cpp
 )
 
 # --- Here Be Boilerplate ---
@@ -45,4 +46,7 @@ target_compile_definitions(margarine PRIVATE
 
     # Disable checking if this is running on aimsulated Pico hardware to save some binary space
     PICO_NO_FPGA_CHECK=1
+
+    # Enable profiling
+    ENABLE_PROFILER=1
 )
