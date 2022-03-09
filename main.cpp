@@ -11,6 +11,7 @@
 #include "content/sprites/walls/stone3/stone3.h"
 #include "content/sprites/walls/stone2/stone2.h"
 #include "content/sprites/walls/stone1/stone1.h"
+#include "content/sprites/walls/stoneblue/stoneblue.h"
 #include "content/sprites/walls/brickred/brickred.h"
 
 #include "render/dda.h"
@@ -22,62 +23,22 @@
 
 #include "profiler/profiler.h"
 
+#include "content/maps/test_map/test_map.h"
+
 using namespace picosystem;
 
-#define mapWidth 24
-#define mapHeight 24
-#define _ 0
-uint8_t worldMap2[] =
-{
-  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,7,7,7,7,7,7,7,7,
-  4,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,7,_,_,_,_,_,_,7,
-  4,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,7,
-  4,_,2,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,7,
-  4,_,3,_,_,_,_,_,_,_,_,_,_,_,_,_,7,_,_,_,_,_,_,7,
-  4,_,4,_,_,_,_,5,5,5,5,5,5,5,5,5,7,7,_,7,7,7,7,7,
-  4,_,5,_,_,_,_,5,_,5,_,5,_,5,_,5,7,_,_,_,7,7,7,1,
-  4,_,6,_,_,_,_,5,_,_,_,_,_,_,_,5,7,_,_,_,_,_,_,8,
-  4,_,7,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,7,7,7,1,
-  4,_,8,_,_,_,_,5,_,_,_,_,_,_,_,5,7,_,_,_,_,_,_,8,
-  4,_,_,_,_,_,_,5,_,_,_,_,_,_,_,5,7,_,_,_,7,7,7,1,
-  4,_,_,_,_,_,_,5,5,5,5,_,5,5,5,5,7,7,7,7,7,7,7,1,
-  6,6,6,6,6,6,6,6,6,6,6,_,6,6,6,6,6,6,6,6,6,6,6,6,
-  8,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,4,
-  6,6,6,6,6,6,_,6,6,6,6,_,6,6,6,6,6,6,6,6,6,6,6,6,
-  4,4,4,4,4,4,_,4,4,4,6,_,6,2,2,2,2,2,2,2,3,3,3,3,
-  4,_,_,_,_,_,_,_,_,4,6,_,6,2,_,_,_,_,_,2,_,_,_,2,
-  4,_,_,_,_,_,_,_,_,_,_,_,6,2,_,_,5,_,_,2,_,_,_,2,
-  4,_,_,_,_,_,_,_,_,4,6,_,6,2,_,_,_,_,_,2,2,_,2,2,
-  4,_,6,_,6,_,_,_,_,4,6,_,_,_,_,_,5,_,_,_,_,_,_,2,
-  4,_,_,5,_,_,_,_,_,4,6,_,6,2,_,_,_,_,_,2,2,_,2,2,
-  4,_,6,_,6,_,_,_,_,4,6,_,6,2,_,_,5,_,_,2,_,_,_,2,
-  4,_,_,_,_,_,_,_,_,4,6,_,6,2,_,_,_,_,_,2,_,_,_,2,
-  4,4,4,4,4,4,4,4,4,4,1,1,1,2,2,2,2,2,2,3,3,3,3,3
-};
-#undef _
-
-color_t worldCol[] = {
-    0,
-    rgb(13, 0, 0),
-    rgb(0, 13, 0),
-    rgb(0, 0, 13),
-    rgb(13, 13, 13),
-    rgb(13, 13, 0),
-    rgb(0, 13, 13),
-    rgb(13, 0, 13),
-    rgb(9, 0, 13),
-};
+map_t *map;
 
 texture_mipmap_t *wall_textures[] = {
     NULL,
     &wall_stone1_texture,
-    &wall_wood_texture,
-    &wall_stone3_texture,
     &wall_stone2_texture,
+    &wall_stone3_texture,
+    &wall_stoneblue_texture,
     &wall_brickred_texture,
     &wall_wood_texture,
-    &wall_stone3_texture,
-    &wall_stone2_texture,
+    &wall_wood_texture,
+    &wall_wood_texture,
 };
 
 camera_state_t cam_state = 
@@ -98,13 +59,14 @@ void init()
     PROFILER_BEGIN_TIMING(ProfilerValue_InitTime);
     {
         profiler_init();
+        map = get_test_map();
     }
     PROFILER_END_TIMING(ProfilerValue_InitTime);
 }
 
 uint8_t sample_world_map(int x, int y)
 {
-    return worldMap2[x + y * mapWidth];
+    return map->wall_map[x + y * map->map_width];
 }
 
 void __time_critical_func(update)(uint32_t tick)
@@ -161,8 +123,8 @@ void __time_critical_func(update)(uint32_t tick)
 
 void __time_critical_func(draw_walls)(uint8_t *wall_heights, int32_t *wall_depths)
 {
-    render_walls_in_range(0, 120, &cam_state, worldMap2, mapWidth, mapHeight, &wall_textures[0], wall_heights, wall_depths);
-    render_walls_in_range(120, 240, &cam_state, worldMap2, mapWidth, mapHeight, &wall_textures[0], wall_heights, wall_depths);
+    render_walls_in_range(0, 120, &cam_state, map, &wall_textures[0], wall_heights, wall_depths);
+    render_walls_in_range(120, 240, &cam_state, map, &wall_textures[0], wall_heights, wall_depths);
 }
 
 void __time_critical_func(draw_floor)(uint8_t *wall_heights)

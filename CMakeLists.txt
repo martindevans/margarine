@@ -4,11 +4,15 @@ set(PROJECT_NAME margarine)
 
 set(PROJECT_SOURCES
     main.cpp
+
     render/dda.cpp
     render/hud.cpp
     render/planes.cpp
     render/sprite.cpp
+
     profiler/profiler.cpp
+
+    content/maps/test_map/test_map.cpp
 )
 
 # --- Here Be Boilerplate ---

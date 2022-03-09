@@ -1,6 +1,7 @@
 #pragma once
 
 #include "texture.h"
+#include "../content/maps/map.h"
 
 typedef struct camera_state
 {
@@ -33,6 +34,6 @@ typedef struct dda_out
     int32_t depth;
 } dda_out_t;
 
-dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, uint8_t map_width, uint8_t map_height);
+dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, map_t *map);
 
-void render_walls_in_range(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, int mapHeight, texture_mipmap **wall_textures, uint8_t *out_wall_heights, int32_t *out_wall_depths);
+void render_walls_in_range(int min_x, int max_x, camera_state_t *cam_state, map_t *map, texture_mipmap **wall_textures, uint8_t *out_wall_heights, int32_t *out_wall_depths);

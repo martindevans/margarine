@@ -7,7 +7,7 @@
 
 using namespace picosystem;
 
-dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, uint8_t map_width, uint8_t map_height)
+dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, map_t *map)
 {
     // Calculate ray position and direction
     float cameraX = 2 * xpos / (float)dda_in->w - 1; //x-coordinate in camera space
@@ -91,11 +91,11 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, 
         }
 
         // Check if sampling is out of bounds
-        if (mapX < 0 || mapY < 0 || mapX >= map_width || mapY >= map_height)
+        if (mapX < 0 || mapY < 0 || mapX >= map->map_width || mapY >= map->map_width)
             wall_type = 1;
 
         // Sample map
-        wall_type = map[mapX + mapY * map_width];
+        wall_type = map->wall_map[mapX + mapY * map->map_width];
     }
 
     //Calculate distance projected on camera direction. This is the shortest distance from the point where the wall is
@@ -214,7 +214,7 @@ inline uint8_t draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, text
     return draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, wall_textures, dda_result->texture_coord, dda_result->side == 0);
 }
 
-void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, int mapHeight, texture_mipmap **wall_textures, uint8_t *out_wall_heights, int32_t *out_wall_depths)
+void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, map_t *map, texture_mipmap **wall_textures, uint8_t *out_wall_heights, int32_t *out_wall_depths)
 {
     uint16_t half_h = _dt->h / 2;
     dda_in_t dda_in = {
@@ -235,14 +235,14 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
     const int bundle_lerp_step = (int)(255 / (float)(bundle_width - 1));
     const float bundle_step = 1 / (float)(bundle_width - 1);
 
-    dda_out_t dda_result_l = dda(min_x, &dda_in, cam_state, worldMap, mapWidth, mapHeight);
+    dda_out_t dda_result_l = dda(min_x, &dda_in, cam_state, map);
 
     for (int x = min_x; x < max_x - bundle_width + 1; x += bundle_width)
     {
         out_wall_depths[x] = dda_result_l.depth;
         out_wall_heights[x] = draw_dda(half_h, x, &dda_result_l, wall_textures);
 
-        dda_out_t dda_result_r = dda(x + bundle_width, &dda_in, cam_state, worldMap, mapWidth, mapHeight);
+        dda_out_t dda_result_r = dda(x + bundle_width, &dda_in, cam_state, map);
     
         // todo: this optimisation doesn't calculate texture coordinates properly :(
         // todo: Need to modify this so it exploits the knowledge that it hits the two ends but recalculates everything else (instead of interpolating)
@@ -273,7 +273,7 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
             // Two rays hit different walls, do all of the intermediate rays
             for (int j = 1; j < bundle_width; j++)
             {
-                dda_out_t dda_result_j = dda(x + j, &dda_in, cam_state, worldMap, mapWidth, mapHeight);
+                dda_out_t dda_result_j = dda(x + j, &dda_in, cam_state, map);
                 out_wall_depths[x + j] = dda_result_j.depth;
                 out_wall_heights[x + j] = draw_dda(half_h, x + j, &dda_result_j, wall_textures);
             }
