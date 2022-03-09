@@ -1,6 +1,6 @@
 #pragma once
 
-#include "picosystem.hpp"
+#include "../../../render/texture.h"
 
 picosystem::color_t testtile_32x32[1024] = {
   0x70fd, 0x70fd, 0x70fd, 0x70fd, 0x70fd, 0x70fd, 0x70fd, 0x70fd,
@@ -194,4 +194,11 @@ picosystem::color_t* testtile_mip_chain[6] = {
     &testtile_8x8[0],
     &testtile_4x4[0],
     &testtile_2x2[0],
+};
+
+texture_mipmap_t testtile_texture = {
+    .pixels = &testtile_mip_chain[0],
+    .size_bits = 5,
+    .size = 32,
+    .mip_chain_length = 5
 };

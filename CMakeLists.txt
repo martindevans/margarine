@@ -7,6 +7,7 @@ set(PROJECT_SOURCES
     render/dda.cpp
     render/hud.cpp
     render/planes.cpp
+    render/sprite.cpp
     profiler/profiler.cpp
 )
 
@@ -49,4 +50,7 @@ target_compile_definitions(margarine PRIVATE
 
     # Enable profiling
     ENABLE_PROFILER=1
+
+    # Enable drawing of the depth buffer to the screen
+    DEBUG_DRAW_DEPTH_BUFFER=0
 )

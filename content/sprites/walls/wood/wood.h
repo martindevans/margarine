@@ -1,6 +1,6 @@
 #pragma once
 
-#include "picosystem.hpp"
+#include "../../../render/texture.h"
 
 picosystem::color_t wall_wood_64x64[4096] = {
   0x32f4, 0x32f4, 0x32f4, 0x32f4, 0x32f4, 0x32f4, 0x32f4, 0x32f4,
@@ -699,4 +699,11 @@ picosystem::color_t* wall_wood_mip_chain[4] = {
     &wall_wood_32x32[0],
     &wall_wood_16x16[0],
     &wall_wood_8x8[0],
+};
+
+texture_mipmap_t wall_wood_texture = {
+    .pixels = &wall_wood_mip_chain[0],
+    .size_bits = 6,
+    .size = 64,
+    .mip_chain_length = 4
 };

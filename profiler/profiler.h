@@ -1,11 +1,12 @@
 #pragma once
 
 #define PROFILER_VALUES \
-    ProfilerValue_InitTime, \
-    ProfilerValue_TotalDdaSteps, \
-    ProfilerValue_PaintedWallPixels, \
-    ProfilerValue_Max, \
+    X(ProfilerValue_InitTime), \
+    X(ProfilerValue_TotalDdaSteps), \
+    X(ProfilerValue_PaintedWallPixels), \
+    X(ProfilerValue_Max), \
 
+#define X(value) value
 enum ProfilerValue
 {
     PROFILER_VALUES

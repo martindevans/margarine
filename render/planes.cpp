@@ -17,7 +17,7 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
     uint8_t wall_heights_prepped[w];
     for (int i = 0; i < w; i++)
     {
-        wall_heights_prepped[i] = (h - wall_heights[i]) / 2;
+        wall_heights_prepped[i] = (h - wall_heights[i] + 1) / 2;
         min_wall_height = MIN(min_wall_height, wall_heights[i]);
     }
     min_wall_height = (240 - min_wall_height) / 2;

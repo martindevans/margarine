@@ -104,11 +104,12 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, 
     //for size == 1, but can be simplified to the code below thanks to how sideDist and deltaDist are computed:
     //because they were left scaled to |rayDir|. sideDist is the entire length of the ray above after the multiple
     //steps, but we subtract deltaDist once because one step more into the wall was taken above.
-    float perpWallDist;
+    int32_t depth_fixed;
     if(side == 0)
-        perpWallDist = (sideDistX_fixed - deltaDistX_fixed) / fixed_scale;
+        depth_fixed = sideDistX_fixed - deltaDistX_fixed;
     else
-        perpWallDist = (sideDistY_fixed - deltaDistY_fixed) / fixed_scale;
+        depth_fixed = sideDistY_fixed - deltaDistY_fixed;
+    float perpWallDist = depth_fixed / fixed_scale;
 
     // Calculate height of line to draw on screen
     float lineHeight = dda_in->h / perpWallDist;
@@ -135,7 +136,8 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, uint8_t *map, 
         .wall_type = wall_type,
         .side = side,
         .lineHeight = lineHeight,
-        .texture_coord = texX
+        .texture_coord = texX,
+        .depth = depth_fixed,
     };
 }
 
@@ -212,7 +214,7 @@ inline uint8_t draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, text
     return draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, wall_textures, dda_result->texture_coord, dda_result->side == 0);
 }
 
-void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, int mapHeight, texture_mipmap **wall_textures, uint8_t *out_wall_heights)
+void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, uint8_t* worldMap, int mapWidth, int mapHeight, texture_mipmap **wall_textures, uint8_t *out_wall_heights, int32_t *out_wall_depths)
 {
     uint16_t half_h = _dt->h / 2;
     dda_in_t dda_in = {
@@ -237,7 +239,9 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
 
     for (int x = min_x; x < max_x - bundle_width + 1; x += bundle_width)
     {
+        out_wall_depths[x] = dda_result_l.depth;
         out_wall_heights[x] = draw_dda(half_h, x, &dda_result_l, wall_textures);
+
         dda_out_t dda_result_r = dda(x + bundle_width, &dda_in, cam_state, worldMap, mapWidth, mapHeight);
     
         // todo: this optimisation doesn't calculate texture coordinates properly :(
@@ -270,6 +274,7 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
             for (int j = 1; j < bundle_width; j++)
             {
                 dda_out_t dda_result_j = dda(x + j, &dda_in, cam_state, worldMap, mapWidth, mapHeight);
+                out_wall_depths[x + j] = dda_result_j.depth;
                 out_wall_heights[x + j] = draw_dda(half_h, x + j, &dda_result_j, wall_textures);
             }
         }

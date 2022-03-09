@@ -1,6 +1,6 @@
 #pragma once
 
-#include "picosystem.hpp"
+#include "../../../render/texture.h"
 
 picosystem::color_t wall_stone3_64x64[4096] = {
   0x88f8, 0x88f8, 0x88f8, 0x42f5, 0x42f6, 0x42f6, 0x42f6, 0x53f8,
@@ -705,4 +705,11 @@ picosystem::color_t* wall_stone3_mip_chain[5] = {
     &wall_stone3_16x16[0],
     &wall_stone3_8x8[0],
     &wall_stone3_4x4[0],
+};
+
+texture_mipmap_t wall_stone3_texture = {
+    .pixels = &wall_stone3_mip_chain[0],
+    .size_bits = 6,
+    .size = 64,
+    .mip_chain_length = 5
 };
