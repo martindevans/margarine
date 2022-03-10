@@ -9,6 +9,7 @@ set(PROJECT_SOURCES
     render/hud.cpp
     render/planes.cpp
     render/sprite.cpp
+    render/camera.cpp
 
     profiler/profiler.cpp
 

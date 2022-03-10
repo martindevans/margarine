@@ -1,17 +1,8 @@
 #pragma once
 
+#include "camera.h"
 #include "texture.h"
 #include "../content/maps/map.h"
-
-typedef struct camera_state
-{
-    float posX;
-    float posY;
-    float dirX;
-    float dirY;
-    float planeX;
-    float planeY;
-} camera_state_t;
 
 typedef struct dda_in
 {

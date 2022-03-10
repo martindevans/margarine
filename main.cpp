@@ -20,6 +20,7 @@
 #include "render/texture.h"
 #include "render/sprite.h"
 #include "render/hud.h"
+#include "render/camera.h"
 
 #include "profiler/profiler.h"
 
@@ -51,7 +52,6 @@ camera_state_t cam_state =
     .planeY = 0.66,
 };
 
-color_t bg = 0;
 int brightness = 90;
 
 void init()
@@ -64,61 +64,30 @@ void init()
     PROFILER_END_TIMING(ProfilerValue_InitTime);
 }
 
-uint8_t sample_world_map(int x, int y)
-{
-    return map->wall_map[x + y * map->map_width];
-}
-
 void __time_critical_func(update)(uint32_t tick)
 {
     profiler_clear();
 
+    // Screen brightness
     if (button(B))
         brightness = brightness <= 15 ? 15 : (brightness - 1);
     else if (button(X))
         brightness = brightness >= 100 ? 100 : (brightness + 1);
     backlight(brightness);
 
-    float rotSpeed = _PI * 0.8 / 40.0;
-    float cosrs, sinrs;
-    bool turn = false;
+    // Turn camera
+    const float rotSpeed = _PI * 0.8 / 40.0;
     if (button(RIGHT))
-    {
-        cosrs = cos(-rotSpeed);
-        sinrs = sin(-rotSpeed);
-        turn = true;
-    }
+        rotate(&cam_state, -rotSpeed);
     else if (button(LEFT))
-    {
-        cosrs = cos(rotSpeed);
-        sinrs = sin(rotSpeed);
-        turn = true;
-    }
-    if (turn)
-    {
-        float oldDirX = cam_state.dirX;
-        cam_state.dirX = cam_state.dirX * cosrs - cam_state.dirY * sinrs;
-        cam_state.dirY = oldDirX * sinrs + cam_state.dirY * cosrs;
-        float oldPlaneX = cam_state.planeX;
-        cam_state.planeX = cam_state.planeX * cosrs - cam_state.planeY * sinrs;
-        cam_state.planeY = oldPlaneX * sinrs + cam_state.planeY * cosrs;
-    }
+        rotate(&cam_state, rotSpeed);
 
-    float moveSpeed = 2 * 1.0 / 40.0;
+    // Move camera
+    const float moveSpeed = 2 * 1.0 / 40.0;
     if (button(UP))
-    {
-        if (sample_world_map(int(cam_state.posX + cam_state.dirX * moveSpeed), int(cam_state.posY)) == 0)
-            cam_state.posX += cam_state.dirX * moveSpeed;
-        if (sample_world_map(int(cam_state.posX), int(cam_state.posY + cam_state.dirY * moveSpeed)) == 0)
-            cam_state.posY += cam_state.dirY * moveSpeed;
-    }
-    if (button(DOWN))
-    {
-        if(sample_world_map(int(cam_state.posX - cam_state.dirX * moveSpeed), int(cam_state.posY)) == 0)
-            cam_state.posX -= cam_state.dirX * moveSpeed;
-        if(sample_world_map(int(cam_state.posX), int(cam_state.posY - cam_state.dirY * moveSpeed)) == 0)
-            cam_state.posY -= cam_state.dirY * moveSpeed;
-    }
+        move(&cam_state, map, moveSpeed);
+    else if (button(DOWN))
+        move(&cam_state, map, -moveSpeed);
 }
 
 void __time_critical_func(draw_walls)(uint8_t *wall_heights, int32_t *wall_depths)
@@ -157,18 +126,10 @@ void __time_critical_func(draw)(uint32_t tick)
 
     // Debug stuff
     pen(rgb(2, 2, 2));
-    std::string fps_s = "FPS: " + str(stats.fps, 1);
-    text(fps_s);
-
-    std::string update_s = "UPDATE: " + str(stats.update_us, 2);
-    text(update_s);
-
-    std::string draw_s = "DRAW: " + str(stats.draw_us, 2);
-    text(draw_s); 
+    text("FPS: " + str(stats.fps, 1));
+    text("UPDATE: " + str(stats.update_us, 2));
+    text("DRAW: " + str(stats.draw_us, 2)); 
 
     if (profiler_is_enabled())
-    {
-        std::string profile_s = "PROFILER: " + str(*profiler_get(ProfilerValue_TotalDdaSteps), 0);
-        text(profile_s);
-    }
+        text("PROFILER: " + str(*profiler_get(ProfilerValue_TotalDdaSteps), 0));
 }
