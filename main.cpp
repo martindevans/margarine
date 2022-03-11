@@ -6,13 +6,7 @@
 #include "hardware/dma.h"
 #include "hardware/interp.h"
 
-#include "content/sprites/test_tile/tile.h"
-#include "content/sprites/walls/wood/wood.h"
-#include "content/sprites/walls/stone3/stone3.h"
-#include "content/sprites/walls/stone2/stone2.h"
-#include "content/sprites/walls/stone1/stone1.h"
-#include "content/sprites/walls/stoneblue/stoneblue.h"
-#include "content/sprites/walls/brickred/brickred.h"
+#include "content/sprites/walls/walls.h"
 
 #include "render/dda.h"
 #include "render/planes.h"
@@ -30,16 +24,11 @@ using namespace picosystem;
 
 map_t *map;
 
-texture_mipmap_t *wall_textures[] = {
-    NULL,
-    &wall_stone1_texture,
-    &wall_stone2_texture,
-    &wall_stone3_texture,
-    &wall_stoneblue_texture,
-    &wall_brickred_texture,
-    &wall_wood_texture,
-    &wall_wood_texture,
-    &wall_wood_texture,
+#define sprite_count 3
+sprite3d_t sprites[sprite_count] = {
+    { .posX = 3.5, .posY = 3.5, .texture = 9 },
+    { .posX = 3.5, .posY = 4.5, .texture = 9 },
+    { .posX = 3.5, .posY = 5.5, .texture = 9 },
 };
 
 camera_state_t cam_state = 
@@ -88,6 +77,9 @@ void __time_critical_func(update)(uint32_t tick)
         move(&cam_state, map, moveSpeed);
     else if (button(DOWN))
         move(&cam_state, map, -moveSpeed);
+
+    // Sort sprites into distance order
+    sort_sprites(&cam_state, sprites, sprite_count);
 }
 
 void __time_critical_func(draw_walls)(uint8_t *wall_heights, int32_t *wall_depths)
@@ -102,6 +94,11 @@ void __time_critical_func(draw_floor)(uint8_t *wall_heights)
     render_planes(60, 120, &cam_state, &wall_stone1_texture, wall_heights);
 }
 
+void __time_critical_func(draw_sprites)(camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths)
+{
+    render_sprites(&cam_state, sprites, sprite_count, wall_depths);
+}
+
 void __time_critical_func(draw)(uint32_t tick)
 {
     // Draw 3D world
@@ -109,6 +106,7 @@ void __time_critical_func(draw)(uint32_t tick)
     int32_t wall_depths[240];
     draw_walls(wall_heights, wall_depths);
     draw_floor(wall_heights);
+    draw_sprites(&cam_state, sprites, sprite_count, wall_depths);
     
 #if DEBUG_DRAW_DEPTH_BUFFER
     // Draw depth buffer
