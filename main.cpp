@@ -16,6 +16,8 @@
 #include "render/hud.h"
 #include "render/camera.h"
 
+#include "multithreading/multithreading.h"
+
 #include "profiler/profiler.h"
 
 #include "content/maps/test_map/test_map.h"
@@ -26,9 +28,16 @@ map_t *map;
 
 #define sprite_count 3
 sprite3d_t sprites[sprite_count] = {
-    { .posX = 3.5, .posY = 3.5, .texture = 9 },
-    { .posX = 3.5, .posY = 4.5, .texture = 9 },
-    { .posX = 3.5, .posY = 5.5, .texture = 9 },
+    { .posX = 4.5, .posY = 3.5, .texture = 1 },
+    { .posX = 4.5, .posY = 4.5, .texture = 2 },
+    { .posX = 4.5, .posY = 5.5, .texture = 3 },
+};
+
+texture_mipmap_t *sprite_textures[] = {
+    NULL,
+    &wall_stone1_texture,
+    &wall_brickred_texture,
+    &wall_wood_texture,
 };
 
 camera_state_t cam_state = 
@@ -43,11 +52,15 @@ camera_state_t cam_state =
 
 int brightness = 90;
 
+uint8_t wall_heights[240];
+int32_t wall_depths[240];
+
 void init()
 {
     PROFILER_BEGIN_TIMING(ProfilerValue_InitTime);
     {
         profiler_init();
+        launch_multicore();
         map = get_test_map();
     }
     PROFILER_END_TIMING(ProfilerValue_InitTime);
@@ -82,32 +95,51 @@ void __time_critical_func(update)(uint32_t tick)
     sort_sprites(&cam_state, sprites, sprite_count);
 }
 
-void __time_critical_func(draw_walls)(uint8_t *wall_heights, int32_t *wall_depths)
+int32_t __time_critical_func(draw_walls_core1)(int32_t parameter)
 {
-    render_walls_in_range(0, 120, &cam_state, map, &wall_textures[0], wall_heights, wall_depths);
-    render_walls_in_range(120, 240, &cam_state, map, &wall_textures[0], wall_heights, wall_depths);
+    render_walls_in_range(120, 240, &cam_state, map, wall_textures, wall_heights, wall_depths);
+    return 0;
 }
 
-void __time_critical_func(draw_floor)(uint8_t *wall_heights)
+void __time_critical_func(draw_walls)()
 {
-    render_planes(0, 60, &cam_state, &wall_stone1_texture, wall_heights);
+    start_multicore_work(&draw_walls_core1, 0);
+    render_walls_in_range(0, 120, &cam_state, map, wall_textures, wall_heights, wall_depths);
+    end_multicore_work_blocking();
+}
+
+int32_t __time_critical_func(draw_floor_core1)(int32_t parameter)
+{
     render_planes(60, 120, &cam_state, &wall_stone1_texture, wall_heights);
+    return 0;
 }
 
-void __time_critical_func(draw_sprites)(camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths)
+void __time_critical_func(draw_floor)()
 {
-    render_sprites(0, 120, &cam_state, sprites, sprite_count, wall_depths);
-    render_sprites(120, 240, &cam_state, sprites, sprite_count, wall_depths);
+    start_multicore_work(&draw_floor_core1, 0);
+    render_planes(0, 60, &cam_state, &wall_stone1_texture, wall_heights);
+    end_multicore_work_blocking();
+}
+
+int32_t __time_critical_func(draw_sprites_core1)(int32_t parameter)
+{
+    render_sprites(120, 240, &cam_state, sprites, sprite_count, wall_depths, sprite_textures);
+    return 0;
+}
+
+void __time_critical_func(draw_sprites)(camera_state_t *camera, sprite3d_t *sprites, int count)
+{
+    start_multicore_work(&draw_sprites_core1, 0);
+    render_sprites(0, 120, &cam_state, sprites, sprite_count, wall_depths, sprite_textures);
+    end_multicore_work_blocking();
 }
 
 void __time_critical_func(draw)(uint32_t tick)
 {
     // Draw 3D world
-    uint8_t wall_heights[240];
-    int32_t wall_depths[240];
-    draw_walls(wall_heights, wall_depths);
-    draw_floor(wall_heights);
-    draw_sprites(&cam_state, sprites, sprite_count, wall_depths);
+    draw_walls();
+    draw_floor();
+    draw_sprites(&cam_state, sprites, sprite_count);
     
 #if DEBUG_DRAW_DEPTH_BUFFER
     // Draw depth buffer

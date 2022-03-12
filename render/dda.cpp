@@ -163,13 +163,13 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
     uint mip_level = 0;
     switch (lineHeightInt)
     {
-        case 0   ... 20:  mip_level = 5; break;
-        case 21  ... 35:  mip_level = 4; break;
-        case 36  ... 50:  mip_level = 3; break;
-        case 51  ... 70:  mip_level = 2; break;
-        case 71  ... 150: mip_level = 1; break;
-        case 151 ... 240: mip_level = 0; break;
-        default:          mip_level = 0; break;
+        case 0  ... 3:   mip_level = 5; break;
+        case 4  ... 7:   mip_level = 4; break;
+        case 8  ... 15:  mip_level = 3; break;
+        case 16 ... 31:  mip_level = 2; break;
+        case 32 ... 63:  mip_level = 1; break;
+        case 64 ... 240: mip_level = 0; break;
+        default:         mip_level = 0; break;
     }
     mip_level = MIN(mip_level, tex->mip_chain_length - 1);
 

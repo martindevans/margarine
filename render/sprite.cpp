@@ -23,7 +23,7 @@ void sort_sprites(camera_state_t *camera, sprite3d_t *sprites, int count)
     std::stable_sort(sprites, sprites + count, compare_sprite3d);
 }
 
-void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths)
+void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths, texture_mipmap **textures)
 {
     float invDet = 1.0 / (camera->planeX * camera->dirY - camera->dirX * camera->planeY);
     int screen_width = _dt->w;
@@ -33,6 +33,11 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
 
     for(int i = 0; i < count; i++)
     {
+        // Skip sprites using a null texture
+        texture_mipmap *tex = textures[sprites[i].texture];
+        if (tex == NULL)
+            continue;
+
         // Translate sprite position to relative to camera
         float spriteX = sprites[i].posX - camera->posX;
         float spriteY = sprites[i].posY - camera->posY;
@@ -53,46 +58,58 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
         // Using 'transformY' instead of the real distance prevents fisheye
         int spriteHeight = abs(int(screen_height / transformY));
         int spriteWidth = abs(int(screen_height / transformY));
+        if (spriteHeight <= 0 || spriteWidth <= 0)
+            continue;
 
-        // Calculate lowest and highest pixel to fill in current stripe
+        // Calculate the texture mapping parameters
+        uint32_t u_coord = 0;
+        uint32_t u_step = uint32_t((65536 * tex->size) / spriteWidth);
+        uint32_t v_base_coord = 0;
+        uint32_t v_step = uint32_t((65536 * tex->size) / spriteHeight);
+
+        // Calculate extent to draw on screen (vertically)
         int drawStartY = half_height - spriteHeight / 2;
         int drawEndY = drawStartY + spriteHeight;
-        if (drawStartY < 0)
+        if (drawStartY < 0)  
+        {
+            v_base_coord += v_step * -drawStartY;
             drawStartY = 0;
+        }
         if (drawEndY >= screen_height)
             drawEndY = screen_height;
 
-        // Calculate width of the sprite
+        // Calculate extent to draw on screen (horizontally)
         int drawStartX = spriteScreenX - spriteWidth / 2;
         int drawEndX = drawStartX + spriteWidth;
         if (drawStartX < min_x)
+        {
+            u_coord += u_step * (min_x - drawStartX);
             drawStartX = min_x;
+        }
         if (drawEndX >= max_x)
             drawEndX = max_x;
 
+        //todo: use interpolator based texture mapping
+
         // loop through every vertical stripe of the sprite on screen
         int32_t transformY8192 = int32_t(transformY * 8192);
-        color_t red = rgb(10, i, 0);
         for (int stripe = drawStartX; stripe < drawEndX; stripe++)
         {
             // Check if this stripe is occluded by the zbuffer
-            if (transformY8192 >= wall_depths[stripe])
-                continue;
-
-            //int texX = int(256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
-            
-            // Copy vertical strip of pixels
-            color_t *dst = _dt->p(stripe, drawStartY);
-            for (int y = drawStartY; y < drawEndY; y++)
+            if (transformY8192 < wall_depths[stripe])
             {
-                // int d = y * 256 - h * 128 + spriteHeight * 128;
-                // int texY = ((d * texHeight) / spriteHeight) / 256;
-                // Uint32 color = texture[sprite[spriteOrder[i]].texture][texWidth * texY + texX]; //get current color from the texture
-                // if((color & 0x00FFFFFF) != 0) buffer[y][stripe] = color; //paint pixel if it isn't black, black is the invisible color
-
-                *dst = red;
-                dst += screen_width;
+                // Copy vertical strip of pixels
+                uint32_t v_coord = v_base_coord;
+                color_t *dst = _dt->p(stripe, drawStartY);
+                for (int y = drawStartY; y < drawEndY; y++)
+                {
+                    *dst = sample_texture(tex, u_coord >> 16, v_coord >> 16, 0);;
+                    dst += screen_width;
+                    v_coord += v_step;
+                }
             }
+
+            u_coord += u_step;
         }
     }
 }

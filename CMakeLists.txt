@@ -13,6 +13,8 @@ set(PROJECT_SOURCES
 
     profiler/profiler.cpp
 
+    multithreading/multithreading.cpp
+
     content/maps/test_map/test_map.cpp
 )
 
@@ -36,6 +38,11 @@ include(picosystem_sdk_import.cmake)
 picosystem_executable(
   ${PROJECT_NAME}
   ${PROJECT_SOURCES}
+)
+
+# Add pico_stdlib library which aggregates commonly used features
+target_link_libraries(${PROJECT_NAME}
+    pico_multicore
 )
 
 # --- End Of Boilerplate ---
