@@ -23,7 +23,7 @@ void sort_sprites(camera_state_t *camera, sprite3d_t *sprites, int count)
     std::stable_sort(sprites, sprites + count, compare_sprite3d);
 }
 
-void __time_critical_func(render_sprites)(camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths)
+void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths)
 {
     float invDet = 1.0 / (camera->planeX * camera->dirY - camera->dirX * camera->planeY);
     int screen_width = _dt->w;
@@ -52,6 +52,7 @@ void __time_critical_func(render_sprites)(camera_state_t *camera, sprite3d_t *sp
         // Calculate height of the sprite on screen
         // Using 'transformY' instead of the real distance prevents fisheye
         int spriteHeight = abs(int(screen_height / transformY));
+        int spriteWidth = abs(int(screen_height / transformY));
 
         // Calculate lowest and highest pixel to fill in current stripe
         int drawStartY = half_height - spriteHeight / 2;
@@ -62,34 +63,34 @@ void __time_critical_func(render_sprites)(camera_state_t *camera, sprite3d_t *sp
             drawEndY = screen_height;
 
         // Calculate width of the sprite
-        int spriteWidth = abs(int(screen_height / transformY));
         int drawStartX = spriteScreenX - spriteWidth / 2;
         int drawEndX = drawStartX + spriteWidth;
-        if (drawStartX < 0)
-            drawStartX = 0;
-        if (drawEndX >= screen_width)
-            drawEndX = screen_width;
+        if (drawStartX < min_x)
+            drawStartX = min_x;
+        if (drawEndX >= max_x)
+            drawEndX = max_x;
 
         // loop through every vertical stripe of the sprite on screen
         int32_t transformY8192 = int32_t(transformY * 8192);
+        color_t red = rgb(10, i, 0);
         for (int stripe = drawStartX; stripe < drawEndX; stripe++)
         {
-            //int texX = int(256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
-
             // Check if this stripe is occluded by the zbuffer
             if (transformY8192 >= wall_depths[stripe])
                 continue;
+
+            //int texX = int(256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
             
             // Copy vertical strip of pixels
             color_t *dst = _dt->p(stripe, drawStartY);
-            for(int y = drawStartY; y < drawEndY; y++)
+            for (int y = drawStartY; y < drawEndY; y++)
             {
                 // int d = y * 256 - h * 128 + spriteHeight * 128;
                 // int texY = ((d * texHeight) / spriteHeight) / 256;
                 // Uint32 color = texture[sprite[spriteOrder[i]].texture][texWidth * texY + texX]; //get current color from the texture
                 // if((color & 0x00FFFFFF) != 0) buffer[y][stripe] = color; //paint pixel if it isn't black, black is the invisible color
 
-                *dst = rgb(10, i, 0);
+                *dst = red;
                 dst += screen_width;
             }
         }

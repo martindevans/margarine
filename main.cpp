@@ -96,7 +96,8 @@ void __time_critical_func(draw_floor)(uint8_t *wall_heights)
 
 void __time_critical_func(draw_sprites)(camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths)
 {
-    render_sprites(&cam_state, sprites, sprite_count, wall_depths);
+    render_sprites(0, 120, &cam_state, sprites, sprite_count, wall_depths);
+    render_sprites(120, 240, &cam_state, sprites, sprite_count, wall_depths);
 }
 
 void __time_critical_func(draw)(uint32_t tick)
