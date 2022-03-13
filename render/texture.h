@@ -35,3 +35,17 @@ inline picosystem::color_t sample_texture(const texture_mipmap_t *texture, uint 
 {
     return texture->pixels[mip][index];
 }
+
+inline int select_mip_level(const texture_mipmap_t *texture, int screen_size)
+{
+    uint tex_size = texture->size;
+
+    uint mip_level = 0;
+    while (screen_size < tex_size)
+    {
+        mip_level++;
+        tex_size /= 2;
+    }
+
+    return MIN(mip_level, texture->mip_chain_length - 1);
+}

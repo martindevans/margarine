@@ -159,19 +159,8 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
     uint32_t v_coord = 0;
     uint32_t v_step = uint32_t((65536 * tex->size) / lineHeightInt);
 
-    // Choose mip level based on wall height
-    uint mip_level = 0;
-    switch (lineHeightInt)
-    {
-        case 0  ... 3:   mip_level = 5; break;
-        case 4  ... 7:   mip_level = 4; break;
-        case 8  ... 15:  mip_level = 3; break;
-        case 16 ... 31:  mip_level = 2; break;
-        case 32 ... 63:  mip_level = 1; break;
-        case 64 ... 240: mip_level = 0; break;
-        default:         mip_level = 0; break;
-    }
-    mip_level = MIN(mip_level, tex->mip_chain_length - 1);
+    // Choose mip level based on wall height (bias slightly towards less aliasing)
+    int mip_level = select_mip_level(tex, lineHeightInt - 10);
 
     // Determine the range of pixels to fill
     int16_t drawStart = half_h - lineHeightInt / 2;
@@ -222,15 +211,6 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
         .h = _dt->h
     };
 
-    // Setup interpolators for bundle interpolation
-    interp_config cfg = interp_default_config();
-    interp_config_set_blend(&cfg, true);
-    interp_set_config(interp0, 0, &cfg);
-    interp_set_config(interp1, 0, &cfg);
-    cfg = interp_default_config();
-    interp_set_config(interp0, 1, &cfg);
-    interp_set_config(interp1, 1, &cfg);
-
     const int bundle_width = 6;
     const int bundle_lerp_step = (int)(255 / (float)(bundle_width - 1));
     const float bundle_step = 1 / (float)(bundle_width - 1);
@@ -244,39 +224,11 @@ void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_st
 
         dda_out_t dda_result_r = dda(x + bundle_width, &dda_in, cam_state, map);
     
-        // todo: this optimisation doesn't calculate texture coordinates properly :(
-        // todo: Need to modify this so it exploits the knowledge that it hits the two ends but recalculates everything else (instead of interpolating)
-        // if (dda_result_l.wall_x == dda_result_r.wall_x && dda_result_l.wall_y == dda_result_r.wall_y && dda_result_l.wall_type == dda_result_r.wall_type && dda_result_l.side == dda_result_r.side)
-        // {
-        //     // Render intermediate columns by interpolating the two end results
-        //     interp0->base[0] = int32_t(dda_result_l.lineHeight);
-        //     interp0->base[1] = int32_t(dda_result_r.lineHeight);
-        //     interp0->accum[1] = bundle_lerp_step;
-
-        //     int32_t u = int32_t(dda_result_l.texture_coord);
-        //     int32_t u_step = (int32_t(dda_result_r.texture_coord) - int32_t(dda_result_l.texture_coord)) / bundle_width;
-        //     u += u_step;
-
-        //     interp1->base[0] = int32_t(dda_result_l.texture_coord);
-        //     interp1->base[1] = int32_t(dda_result_r.texture_coord);
-        //     interp1->accum[1] = bundle_lerp_step;
-
-        //     for (int j = 1; j < bundle_width; j++)
-        //     {
-        //         draw_wall(half_h, x + j, interp0->peek[1], dda_result_l.wall_type, wall_textures, u);
-        //         interp0->accum[1] += bundle_lerp_step;
-        //         interp1->accum[1] += bundle_lerp_step;
-        //     }
-        // }
-        // else
+        for (int j = 1; j < bundle_width; j++)
         {
-            // Two rays hit different walls, do all of the intermediate rays
-            for (int j = 1; j < bundle_width; j++)
-            {
-                dda_out_t dda_result_j = dda(x + j, &dda_in, cam_state, map);
-                out_wall_depths[x + j] = dda_result_j.depth;
-                out_wall_heights[x + j] = draw_dda(half_h, x + j, &dda_result_j, wall_textures);
-            }
+            dda_out_t dda_result_j = dda(x + j, &dda_in, cam_state, map);
+            out_wall_depths[x + j] = dda_result_j.depth;
+            out_wall_heights[x + j] = draw_dda(half_h, x + j, &dda_result_j, wall_textures);
         }
 
         dda_result_l = dda_result_r;

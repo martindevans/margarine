@@ -89,7 +89,8 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
         if (drawEndX >= max_x)
             drawEndX = max_x;
 
-        //todo: use interpolator based texture mapping
+        // Choose mip level based on sprite height
+        int mip_level = select_mip_level(tex, spriteHeight);
 
         // loop through every vertical stripe of the sprite on screen
         int32_t transformY8192 = int32_t(transformY * 8192);
@@ -103,7 +104,7 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
                 color_t *dst = _dt->p(stripe, drawStartY);
                 for (int y = drawStartY; y < drawEndY; y++)
                 {
-                    *dst = sample_texture(tex, u_coord >> 16, v_coord >> 16, 0);;
+                    *dst = sample_texture(tex, u_coord >> 16, v_coord >> 16, mip_level);
                     dst += screen_width;
                     v_coord += v_step;
                 }
