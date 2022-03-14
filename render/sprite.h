@@ -9,6 +9,10 @@ typedef struct sprite3d
     float posY;
     int texture;
 
+    float xSize;
+    float ySize;
+    int yMove;
+
     float distanceSqr;
 } sprite3d_t;
 

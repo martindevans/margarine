@@ -28,9 +28,9 @@ map_t *map;
 
 #define sprite_count 3
 sprite3d_t sprites[sprite_count] = {
-    { .posX = 4.5, .posY = 3.5, .texture = 1 },
-    { .posX = 4.5, .posY = 4.5, .texture = 2 },
-    { .posX = 4.5, .posY = 5.5, .texture = 3 },
+    { .posX = 4.5, .posY = 3.5, .texture = 1, .xSize = 0.25, .ySize = 0.25, .yMove = 120 },
+    { .posX = 4.5, .posY = 4.5, .texture = 2, .xSize = 0.75, .ySize = 0.50, .yMove = 0 },
+    { .posX = 4.5, .posY = 5.5, .texture = 3, .xSize = 0.25, .ySize = 1.00, .yMove = 0 },
 };
 
 texture_mipmap_t *sprite_textures[] = {

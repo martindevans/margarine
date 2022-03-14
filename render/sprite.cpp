@@ -49,15 +49,16 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
         float transformX = invDet * (camera->dirY * spriteX - camera->dirX * spriteY);
         float transformY = invDet * (-camera->planeY * spriteX + camera->planeX * spriteY);
         int spriteScreenX = int(half_width * (1 + transformX / transformY));
+        int yMoveScreen = int(sprites[i].yMove / transformY);
 
         // Skip sprite if it is behind camera
         if (transformY <= 0)
             continue;
 
-        // Calculate height of the sprite on screen
+        // Calculate size of the sprite on screen
         // Using 'transformY' instead of the real distance prevents fisheye
-        int spriteHeight = abs(int(screen_height / transformY));
-        int spriteWidth = abs(int(screen_height / transformY));
+        int spriteWidth = abs(int(sprites[i].xSize * screen_height / transformY));
+        int spriteHeight = abs(int(sprites[i].ySize * screen_height / transformY));
         if (spriteHeight <= 0 || spriteWidth <= 0)
             continue;
 
@@ -68,7 +69,7 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
         uint32_t v_step = uint32_t((65536 * tex->size) / spriteHeight);
 
         // Calculate extent to draw on screen (vertically)
-        int drawStartY = half_height - spriteHeight / 2;
+        int drawStartY = half_height - spriteHeight / 2 + yMoveScreen;
         int drawEndY = drawStartY + spriteHeight;
         if (drawStartY < 0)  
         {
