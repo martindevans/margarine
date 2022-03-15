@@ -105,7 +105,9 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
                 color_t *dst = _dt->p(stripe, drawStartY);
                 for (int y = drawStartY; y < drawEndY; y++)
                 {
-                    *dst = sample_texture(tex, u_coord >> 16, v_coord >> 16, mip_level);
+                    color_t c = sample_texture(tex, u_coord >> 16, v_coord >> 16, mip_level);
+                    if ((c & 0x00f0) > 0)
+                        *dst = c;
                     dst += screen_width;
                     v_coord += v_step;
                 }

@@ -4,17 +4,17 @@
 
 typedef struct texture
 {
-    picosystem::color_t *pixels;
-    uint8_t size;
-    uint8_t size_bits;
+    const picosystem::color_t *pixels;
+    const uint8_t size;
+    const uint8_t size_bits;
 } texture_t;
 
 typedef struct texture_mipmap
 {
-    picosystem::color_t **pixels;
-    uint8_t size_bits;
-    uint8_t size;
-    uint8_t mip_chain_length;
+    const picosystem::color_t **pixels;
+    const uint8_t size_bits;
+    const uint8_t size;
+    const uint8_t mip_chain_length;
 } texture_mipmap_t;
 
 inline picosystem::color_t sample_texture(const texture_t *texture, uint x, uint y)
