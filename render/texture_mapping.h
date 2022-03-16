@@ -17,17 +17,17 @@ inline void texture_mapping_setup(interp_hw_t *interp, uint texture_size_bits, u
     interp_set_config(interp, 1, &cfg);
 
     //interp0->base[2] = (uintptr_t) texture;
-    interp0->base[2] = 0;
+    interp->base[2] = 0;
 }
 
 inline void texture_mapped_span_begin(interp_hw_t *interp, uint32_t u, uint32_t v, uint32_t du, uint32_t dv)
 {
     // u, v are texture coordinates in fixed point with uv_fractional_bits fractional bits
     // du, dv are texture coordinate steps across the span in same fixed point.
-    interp0->accum[0] = u;
-    interp0->base[0] = du;
-    interp0->accum[1] = v;
-    interp0->base[1] = dv;
+    interp->accum[0] = u;
+    interp->base[0] = du;
+    interp->accum[1] = v;
+    interp->base[1] = dv;
 }
 
 inline uint16_t texture_mapped_span_next(interp_hw_t *interp)
@@ -42,5 +42,5 @@ inline uint16_t texture_mapped_span_next(interp_hw_t *interp)
 
     // result2 is the texture address for the current pixel;
     // popping the result advances to the next iteration
-    return interp0->pop[2];
+    return interp->pop[2];
 }

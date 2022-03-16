@@ -2,6 +2,7 @@
 
 #include "hardware/interp.h"
 
+#include "texture_mapping.h"
 #include "dda.h"
 #include "../profiler/profiler.h"
 
@@ -153,7 +154,7 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
 {
     // Choose wall texture
     texture_mipmap *tex = wall_textures[wall_type];
-    uint32_t u_coord = uint32_t((uf_coord * tex->size) / 8192);
+    uint32_t u_coord = uint32_t((uf_coord * tex->size) << 3);
 
     // Determine y step of texture coordinates
     uint32_t v_coord = 0;
@@ -173,12 +174,16 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
     if (drawEnd > _dt->h)
         drawEnd = _dt->h;    
 
-    // Darken some sides
-    //todo: sample from a per-tile lightmap
-    color_t light_map_colour = rgb(0, 0, 0);
-    uint8_t light_map_blend = 0;
-    if (side)
-        light_map_blend = 5;
+    // // Darken some sides
+    // //todo: sample from a per-tile lightmap
+    // color_t light_map_colour = rgb(0, 0, 0);
+    // uint8_t light_map_blend = 0;
+    // if (side)
+    //     light_map_blend = 5;
+
+    // Setup interpolator to generate texture coordinates
+    texture_mapping_setup(interp0, tex->size_bits, 16);
+    texture_mapped_span_begin(interp0, u_coord, v_coord, 0, v_step);
 
     // Draw the pixels of the stripe as a vertical line
     uint count = drawEnd - drawStart;
@@ -186,10 +191,12 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
     color_t *dst = _dt->p(x, drawStart);
     while (count-- > 0)
     {
-        //todo: lightmapping is too slow :(
-        //color_t c = mix(sample_texture(tex, u_coord, v_coord >> 16, mip_level), light_map_colour, light_map_blend);
+        uint16_t pixel_index = texture_mapped_span_next(interp0);
+        color_t c = sample_texture(tex, pixel_index, mip_level);
 
-        color_t c = sample_texture(tex, u_coord, v_coord >> 16, mip_level);
+        //todo: lightmapping is too slow :(
+        //c = mix(c, light_map_colour, light_map_blend);
+
         *dst = c;
         v_coord += v_step;
         dst += _dt->w;
