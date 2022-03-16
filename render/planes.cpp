@@ -35,7 +35,7 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
     uint16_t floor_pixels_w = floor_texture->size;
     uint16_t floor_pixels_h = floor_texture->size;
 
-    texture_mapping_setup(floor_texture->size_bits, 16);
+    texture_mapping_setup(interp0, floor_texture->size_bits, 16);
 
     for (int y = min_y; y < max_y; y++)
     {
@@ -94,25 +94,14 @@ void __time_critical_func(render_planes)(int min_y, int max_y, camera_state_t *c
         while (dv < 0)
             dv += floor_pixels_h;     
 
-        texture_mapped_span_begin(uint32_t(65536 * u), uint32_t(65536 * v), uint32_t(65536 * du), uint32_t(65536 * dv));
+        texture_mapped_span_begin(interp0, uint32_t(65536 * u), uint32_t(65536 * v), uint32_t(65536 * du), uint32_t(65536 * dv));
         for (int x = 0; x < w; x++)
         {
-            uint pixel_idx = texture_mapped_span_next();
+            uint pixel_idx = texture_mapped_span_next(interp0);
 
             if (y < wall_heights_prepped[x])
             {
-                color_t c;
-                if (mip_level == 0)
-                {
-                    c = sample_texture(floor_texture, pixel_idx, mip_level);
-                }
-                else
-                {
-                    int px_x = pixel_idx >> floor_texture->size_bits;
-                    int px_y = pixel_idx & (floor_texture->size - 1);
-                    c = sample_texture(floor_texture, px_y, px_x, mip_level);
-                }
-                
+                color_t c = sample_texture(floor_texture, pixel_idx, mip_level);
                 *dst_top = c;
                 *dst_bot = c;
             }

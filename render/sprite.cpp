@@ -1,4 +1,5 @@
 #include "sprite.h"
+#include "texture_mapping.h"
 
 #include <bits/stdc++.h>
 #include "picosystem.hpp"
@@ -93,6 +94,9 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
         // Choose mip level based on sprite height
         int mip_level = select_mip_level(tex, spriteHeight);
 
+        // Setup interpolator to generate texture coordinates
+        texture_mapping_setup(interp0, tex->size_bits, 16);
+
         // loop through every vertical stripe of the sprite on screen
         int32_t transformY8192 = int32_t(transformY * 8192);
         for (int stripe = drawStartX; stripe < drawEndX; stripe++)
@@ -100,16 +104,22 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
             // Check if this stripe is occluded by the zbuffer
             if (transformY8192 < wall_depths[stripe])
             {
-                // Copy vertical strip of pixels
+                // Setup interpolator to generate texture coords for this strip
                 uint32_t v_coord = v_base_coord;
+                texture_mapped_span_begin(interp0, uint32_t(u_coord), uint32_t(v_base_coord), 0, uint32_t(v_step));
+
+                // Copy vertical strip
                 color_t *dst = _dt->p(stripe, drawStartY);
                 for (int y = drawStartY; y < drawEndY; y++)
                 {
-                    color_t c = sample_texture(tex, u_coord >> 16, v_coord >> 16, mip_level);
+                    uint pixel_idx = texture_mapped_span_next(interp0);
+                    color_t c = sample_texture(tex, pixel_idx, mip_level);
+
+                    // Copy colour iff:
+                    // - source texture is non-transparent
                     if ((c & 0x00f0) > 0)
                         *dst = c;
                     dst += screen_width;
-                    v_coord += v_step;
                 }
             }
 
