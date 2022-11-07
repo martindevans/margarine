@@ -197,6 +197,8 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
         // blend lightmap
         if (light_map_blend)
             c = c + light_map_mod;
+        else
+            c = c - light_map_mod;
 
         *dst = c;
         v_coord += v_step;
