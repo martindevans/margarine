@@ -24,7 +24,7 @@ void sort_sprites(camera_state_t *camera, sprite3d_t *sprites, int count)
     std::stable_sort(sprites, sprites + count, compare_sprite3d);
 }
 
-void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths, texture_mipmap **textures)
+void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *camera, sprite3d_t *sprites, int count, int32_t *wall_depths, texture_mipmap_t *textures)
 {
     float invDet = 1.0 / (camera->planeX * camera->dirY - camera->dirX * camera->planeY);
     int screen_width = _dt->w;
@@ -35,8 +35,8 @@ void __time_critical_func(render_sprites)(int min_x, int max_x, camera_state_t *
     for(int i = 0; i < count; i++)
     {
         // Skip sprites using a null texture
-        texture_mipmap *tex = textures[sprites[i].texture];
-        if (tex == NULL)
+        texture_mipmap *tex = &textures[sprites[i].texture];
+        if (tex == NULL || tex->pixels == NULL)
             continue;
 
         // Translate sprite position to relative to camera

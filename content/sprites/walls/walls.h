@@ -5,14 +5,14 @@
 #include "stoneblue/stoneblue.h"
 #include "brickred/brickred.h"
 
-texture_mipmap_t *wall_textures[] = {
-    NULL,
-    &wall_stone1_texture,
-    &wall_stone2_texture,
-    &wall_stone3_texture,
-    &wall_stoneblue_texture,
-    &wall_brickred_texture,
-    &wall_wood_texture,
-    &wall_wood_texture,
-    &wall_wood_texture,
+texture_mipmap_t wall_textures[] = {
+    { .pixels = NULL },
+    wall_stone1_texture,
+    wall_stone2_texture,
+    wall_stone3_texture,
+    wall_stoneblue_texture,
+    wall_brickred_texture,
+    wall_wood_texture,
+    wall_wood_texture,
+    wall_wood_texture,
 };

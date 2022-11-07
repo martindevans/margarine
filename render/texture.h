@@ -17,6 +17,8 @@ typedef struct texture_mipmap
     const uint8_t mip_chain_length;
 } texture_mipmap_t;
 
+void load_texture(texture_mipmap_t &texture, uint8_t max_size);
+
 inline picosystem::color_t sample_texture(const texture_t *texture, uint x, uint y)
 {
     return texture->pixels[x + y * texture->size];

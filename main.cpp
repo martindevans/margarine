@@ -34,11 +34,11 @@ sprite3d_t sprites[sprite_count] = {
     { .posX = 4.5, .posY = 5.5, .texture = 3, .xSize = 0.25, .ySize = 1.00, .yMove = 0 },
 };
 
-texture_mipmap_t *sprite_textures[] = {
-    NULL,
-    &sprite_barrel_texture,
-    &wall_brickred_texture,
-    &wall_wood_texture,
+texture_mipmap_t sprite_textures[] = {
+    { .pixels = NULL },
+    sprite_barrel_texture,
+    wall_brickred_texture,
+    wall_wood_texture,
 };
 
 camera_state_t cam_state = 
@@ -63,6 +63,14 @@ void init()
         profiler_init();
         launch_multicore();
         map = get_test_map();
+
+        // Preload all but the highest mip level into memory. This speeds up access of texture data
+        // because it's no longer limited by the flash. Costs 33792 bytes for 11 texture, so this may
+        // need to be reduced if memory becomes a limiting factor.
+        for (size_t i = 1; i <= 3; i++)
+            load_texture(sprite_textures[i], 32);
+        for (size_t i = 1; i <= 8; i++)
+            load_texture(wall_textures[i], 32);
     }
     PROFILER_END_TIMING(ProfilerValue_InitTime);
 }
@@ -157,7 +165,7 @@ void __time_critical_func(draw)(uint32_t tick)
     draw_battery_indicator();
 
     // Debug stuff
-    pen(rgb(2, 2, 2));
+    pen(rgb(3, 3, 3));
     text("FPS: " + str(stats.fps, 1));
     text("UPDATE: " + str(stats.update_us, 2));
     text("DRAW: " + str(stats.draw_us, 2)); 

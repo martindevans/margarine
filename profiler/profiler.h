@@ -4,6 +4,7 @@
     X(ProfilerValue_InitTime), \
     X(ProfilerValue_TotalDdaSteps), \
     X(ProfilerValue_PaintedWallPixels), \
+    X(ProfilerValue_MainRenderLoopTime), \
     X(ProfilerValue_Max), \
 
 #define X(value) value

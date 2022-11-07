@@ -27,4 +27,4 @@ typedef struct dda_out
 
 dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, map_t *map);
 
-void render_walls_in_range(int min_x, int max_x, camera_state_t *cam_state, map_t *map, texture_mipmap **wall_textures, uint8_t *out_wall_heights, int32_t *out_wall_depths);
+void render_walls_in_range(int min_x, int max_x, camera_state_t *cam_state, map_t *map, texture_mipmap *wall_textures, uint8_t *out_wall_heights, int32_t *out_wall_depths);
