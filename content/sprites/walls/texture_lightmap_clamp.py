@@ -16,9 +16,9 @@ def process_blob_item(item):
     r = (item >> 0)  & 0b1111
     a = (item >> 4)  & 0b1111
 
-    mb = clamp(b, 1, 13)
-    mg = clamp(g, 1, 13)
-    mr = clamp(r, 1, 13)
+    mb = clamp(b - 1, 0, 13)
+    mg = clamp(g - 1, 0, 13)
+    mr = clamp(r - 1, 0, 13)
 
     # (r & 0xf) | ((a & 0xf) << 4) | ((b & 0xf) << 8) | ((g & 0xf) << 12)
     modified = mr | (a << 4) | (mb << 8) | (mg << 12)

@@ -177,9 +177,6 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
     // Darken some sides
     //todo: sample from a per-tile lightmap
     uint16_t light_map_mod = rgb(1, 1, 1);
-    bool light_map_blend = false;
-    if (side)
-        light_map_blend = true;
 
     // Setup interpolator to generate texture coordinates
     texture_mapping_setup(interp0, tex->size_bits, 16);
@@ -195,10 +192,8 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
         color_t c = sample_texture(tex, pixel_index, mip_level);
 
         // blend lightmap
-        if (light_map_blend)
-            c = c + light_map_mod;
-        else
-            c = c - light_map_mod;
+        if (side)
+            c = c + rgb(1, 1, 2);
 
         *dst = c;
         v_coord += v_step;
