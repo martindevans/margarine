@@ -13,14 +13,12 @@
 #include "render/sprite.h"
 #include "render/hud.h"
 #include "render/camera.h"
-
-#include "content/sprites/walls/walls.h"
-#include "content/sprites/objects/barrel/barrel.h"
-
 #include "multithreading/multithreading.h"
 
 #include "profiler/profiler.h"
 
+#include "content/sprites/walls/walls.h"
+#include "content/sprites/objects/barrel/barrel.h"
 #include "content/maps/test_map/test_map.h"
 
 using namespace picosystem;
