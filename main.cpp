@@ -6,9 +6,6 @@
 #include "hardware/dma.h"
 #include "hardware/interp.h"
 
-#include "content/sprites/walls/walls.h"
-#include "content/sprites/objects/barrel/barrel.h"
-
 #include "render/dda.h"
 #include "render/planes.h"
 #include "render/texture_mapping.h"
@@ -16,6 +13,9 @@
 #include "render/sprite.h"
 #include "render/hud.h"
 #include "render/camera.h"
+
+#include "content/sprites/walls/walls.h"
+#include "content/sprites/objects/barrel/barrel.h"
 
 #include "multithreading/multithreading.h"
 
