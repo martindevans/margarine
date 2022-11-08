@@ -56,7 +56,7 @@ jobs:
       run: |
         cmake -E make_directory ${{runner.workspace}}/build
 
-    - name: Configure CMake (Examples)
+    - name: Configure CMake
       shell: bash
       working-directory: ${{runner.workspace}}/build
       run: cmake $GITHUB_WORKSPACE/code -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_PACKAGE_FILE_NAME=${{env.RELEASE_FILE}} ${{matrix.cmake-args}}
@@ -68,8 +68,8 @@ jobs:
         cmake --build . --config $BUILD_TYPE -j 2
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ${{env.RELEASE_FILE}}
-        path: ${{runner.workspace}}/build/
+        path: ${{runner.workspace}}/build/*.uf2
 
