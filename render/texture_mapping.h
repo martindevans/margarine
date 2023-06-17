@@ -2,7 +2,7 @@
 
 #include "hardware/interp.h"
 
-inline void texture_mapping_setup(interp_hw_t *interp, uint texture_size_bits, uint uv_fractional_bits)
+inline __attribute__((always_inline)) void texture_mapping_setup(interp_hw_t *interp, uint texture_size_bits, uint uv_fractional_bits)
 {
     interp_config cfg = interp_default_config();
     // set add_raw flag to use raw (un-shifted and un-masked) lane accumulator value when adding
@@ -20,7 +20,7 @@ inline void texture_mapping_setup(interp_hw_t *interp, uint texture_size_bits, u
     interp->base[2] = 0;
 }
 
-inline void texture_mapped_span_begin(interp_hw_t *interp, uint32_t u, uint32_t v, uint32_t du, uint32_t dv)
+inline __attribute__((always_inline)) void texture_mapped_span_begin(interp_hw_t *interp, uint32_t u, uint32_t v, uint32_t du, uint32_t dv)
 {
     // u, v are texture coordinates in fixed point with uv_fractional_bits fractional bits
     // du, dv are texture coordinate steps across the span in same fixed point.
@@ -30,7 +30,7 @@ inline void texture_mapped_span_begin(interp_hw_t *interp, uint32_t u, uint32_t 
     interp->base[1] = dv;
 }
 
-inline uint16_t texture_mapped_span_next(interp_hw_t *interp)
+inline __attribute__((always_inline)) uint16_t texture_mapped_span_next(interp_hw_t *interp)
 {
     // equivalent to
     // uint32_t sm_result0 = (accum0 >> uv_fractional_bits) & ((1 << texture_width_bits) - 1);

@@ -14,17 +14,18 @@ typedef struct texture_mipmap
     const picosystem::color_t **pixels;
     const uint8_t size_bits;
     const uint8_t size;
+    const uint8_t size_minus_1;
     const uint8_t mip_chain_length;
 } texture_mipmap_t;
 
 void load_texture(texture_mipmap_t &texture, uint8_t max_size);
 
-inline picosystem::color_t sample_texture(const texture_t *texture, uint x, uint y)
+inline __attribute__((always_inline)) picosystem::color_t sample_texture(const texture_t *texture, uint x, uint y)
 {
     return texture->pixels[x + y * texture->size];
 }
 
-inline picosystem::color_t sample_texture(const texture_mipmap_t *texture, uint x, uint y, uint mip)
+inline __attribute__((always_inline)) picosystem::color_t sample_texture(const texture_mipmap_t *texture, uint x, uint y, uint mip)
 {
     x >>= mip;
     y >>= mip;
@@ -33,17 +34,17 @@ inline picosystem::color_t sample_texture(const texture_mipmap_t *texture, uint 
     return texture->pixels[mip][x + y * size];
 }
 
-inline picosystem::color_t sample_texture(const texture_mipmap_t *texture, uint index, uint mip)
+inline __attribute__((always_inline)) picosystem::color_t sample_texture(const texture_mipmap_t *texture, uint index, uint mip)
 {
     if (mip == 0)
         return texture->pixels[mip][index];
 
     uint px_x = index >> texture->size_bits;
-    uint px_y = index & (texture->size - 1);
+    uint px_y = index & (texture->size_minus_1);
     return sample_texture(texture, px_y, px_x, mip);
 }
 
-inline int select_mip_level(const texture_mipmap_t *texture, int screen_size)
+inline __attribute__((always_inline)) int select_mip_level(const texture_mipmap_t *texture, int screen_size)
 {
     uint tex_size = texture->size;
 

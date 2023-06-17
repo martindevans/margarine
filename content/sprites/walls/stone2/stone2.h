@@ -714,5 +714,6 @@ texture_mipmap_t wall_stone2_texture = {
     .pixels = &wall_stone2_mip_chain[0],
     .size_bits = 6,
     .size = 64,
+    .size_minus_1 = 63,
     .mip_chain_length = 6
 };

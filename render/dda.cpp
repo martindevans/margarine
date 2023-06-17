@@ -144,13 +144,13 @@ dda_out_t dda(int xpos, dda_in_t *dda_in, camera_state_t *cam_in, map_t *map)
 
 // draw a vertical wall slice
 // - half_h: Half screen height
-// - x: x coordnate of the slice on the screen
+// - x: x coordinate of the slice on the screen
 // - lineHeightInt: Integer height of the line
 // - wall_type: type of the wall
 // - wall_textures: set of wall textures to use
 // - uf_coord: (u texture coordinate) * 8192
-// - side: the direction this wall is being looked at
-inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8_t wall_type, texture_mipmap *wall_textures, uint32_t uf_coord, bool side)
+// - lightmap_sample: value from the lightmap
+inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, uint8_t wall_type, texture_mipmap *wall_textures, uint32_t uf_coord, uint16_t lightmap_sample)
 {
     // Choose wall texture
     texture_mipmap *tex = &wall_textures[wall_type];
@@ -174,10 +174,6 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
     if (drawEnd > _dt->h)
         drawEnd = _dt->h;    
 
-    // Darken some sides
-    //todo: sample from a per-tile lightmap
-    uint16_t light_map_mod = rgb(1, 1, 1);
-
     // Setup interpolator to generate texture coordinates
     texture_mapping_setup(interp0, tex->size_bits, 16);
     texture_mapped_span_begin(interp0, u_coord, v_coord, 0, v_step);
@@ -186,18 +182,15 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
     uint count = drawEnd - drawStart;
     PROFILER_ADD(ProfilerValue_PaintedWallPixels, count);
     color_t *dst = _dt->p(x, drawStart);
+    int32_t step = _dt->w;
     while (count-- > 0)
     {
         uint16_t pixel_index = texture_mapped_span_next(interp0);
         color_t c = sample_texture(tex, pixel_index, mip_level);
-
-        // blend lightmap
-        if (side)
-            c = c + rgb(1, 1, 2);
+        c += lightmap_sample;
 
         *dst = c;
-        v_coord += v_step;
-        dst += _dt->w;
+        dst += step;
     }
 
     return uint8_t(drawEnd - drawStart);
@@ -205,7 +198,15 @@ inline uint8_t draw_wall(uint16_t half_h, uint16_t x, uint16_t lineHeightInt, ui
 
 inline uint8_t draw_dda(uint16_t half_h, uint16_t x, dda_out_t *dda_result, texture_mipmap *wall_textures)
 {
-    return draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, wall_textures, dda_result->texture_coord, dda_result->side == 0);
+    // Sample lightmap
+    uint16_t light_map_mod = rgb(0, 0, 0);
+    if (dda_result->side == 0)
+    {
+        uint8_t b = dda_result->wall_x + dda_result->wall_y * 17;
+        light_map_mod = rgb(dda_result->wall_x & 0b11, dda_result->wall_y & 0b11, b & 0b11); //todo: sample from a per-tile lightmap
+    }
+
+    return draw_wall(half_h, x, uint16_t(dda_result->lineHeight), dda_result->wall_type, wall_textures, dda_result->texture_coord, light_map_mod);
 }
 
 void __time_critical_func(render_walls_in_range)(int min_x, int max_x, camera_state_t *cam_state, map_t *map, texture_mipmap *wall_textures, uint8_t *out_wall_heights, int32_t *out_wall_depths)

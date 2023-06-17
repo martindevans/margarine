@@ -203,5 +203,6 @@ texture_mipmap_t sprite_barrel_texture = {
     .pixels = &sprite_barrel_mip_chain[0],
     .size_bits = 5,
     .size = 32,
+    .size_minus_1 = 31,
     .mip_chain_length = 6
 };

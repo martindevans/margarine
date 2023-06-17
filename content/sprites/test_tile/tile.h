@@ -198,5 +198,6 @@ texture_mipmap_t testtile_texture = {
     .pixels = &testtile_mip_chain[0],
     .size_bits = 5,
     .size = 32,
+    .size_minus_1 = 31,
     .mip_chain_length = 5
 };
